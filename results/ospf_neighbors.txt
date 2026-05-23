@@ -1,0 +1,29 @@
+OSPF NEIGHBOR RESULTS
+
+Router: R1-HQ
+
+Neighbor ID     Pri   State           Dead Time   Address         Interface
+4.4.4.4           1   FULL/DR         00:00:37    10.0.14.2       FastEthernet1/0
+3.3.3.3           1   FULL/DR         00:00:39    10.0.13.2       FastEthernet2/0
+2.2.2.2           1   FULL/DR         00:00:35    10.0.12.2       FastEthernet2/1
+
+OSPF Status: SUCCESS
+
+----------------------------------------
+
+Router: R3-BRANCH2
+
+Neighbor ID     Pri   State           Dead Time   Address         Interface
+5.5.5.5           1   FULL/DR         00:00:35    10.0.35.2       FastEthernet2/0
+1.1.1.1           1   FULL/BDR        00:00:39    10.0.13.1       FastEthernet1/0
+
+OSPF Status: SUCCESS
+
+----------------------------------------
+
+Router: R5-DATACENTER
+
+Neighbor ID     Pri   State           Dead Time   Address         Interface
+3.3.3.3           1   FULL/BDR        00:00:32    10.0.35.1       FastEthernet1/0
+
+OSPF Status: SUCCESS
