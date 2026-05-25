@@ -3,7 +3,9 @@
 ## Planned Features
 - AI topology image recognition
 - GUI dashboard
-- Automatic IP subnet calculation
+- Automatic IP su
+
+bnet calculation
 - Support for multiple routing protocols
 - Error recovery system
 - Web-based management interface
