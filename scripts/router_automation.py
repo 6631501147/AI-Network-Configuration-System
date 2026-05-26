@@ -1,5 +1,5 @@
 from netmiko import ConnectHandler
-import telnetlib
+import socket
 import time
 from datetime import datetime
 
@@ -234,7 +234,9 @@ def configure_pc(name, info):
     print(f"\n[PC] Configuring {name}...")
 
     try:
-        tn = telnetlib.Telnet(info["host"], info["port"], timeout=10)
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.settimeout(10)
+        s.connect((info["host"], info["port"]))
         time.sleep(1)
 
         commands = [
@@ -243,12 +245,23 @@ def configure_pc(name, info):
         ]
 
         for cmd in commands:
-            tn.write(cmd.encode("ascii") + b"\n")
+            s.sendall(cmd.encode("ascii") + b"\n")
             time.sleep(0.5)
 
-        output = tn.read_very_eager().decode(errors="ignore")
+        s.setblocking(False)
+        output = b""
+        try:
+            while True:
+                data = s.recv(4096)
+                if not data:
+                    break
+                output += data
+        except BlockingIOError:
+            pass
+        
+        output = output.decode(errors="ignore")
         print(output)
-        tn.close()
+        s.close()
 
         print(f"[PC] {name} configured successfully")
         return True, output
