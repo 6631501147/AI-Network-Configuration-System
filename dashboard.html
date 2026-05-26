@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Network Configuration Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="dashboard.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+    <div class="glow-bg"></div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="toast-container"></div>
+    
+    <div class="container">
+        <header>
+            <div class="logo">
+                <div class="logo-icon">
+                    <i data-lucide="shield-alert" class="logo-svg"></i>
+                </div>
+                <div>
+                    <h1>NetConf AI</h1>
+                    <p class="logo-tagline">Autopilot Enterprise Networking</p>
+                </div>
+            </div>
+            <div class="header-info">
+                <div class="status-badge" id="global-status">
+                    <span class="pulse"></span>
+                    <span class="status-text">Analyzing Report...</span>
+                </div>
+                <div class="timestamp" id="report-timestamp">
+                    <i data-lucide="clock" class="inline-icon"></i> Last Updated: --
+                </div>
+            </div>
+        </header>
+
+        <main>
+            <!-- Stats Overview -->
+            <section class="overview-section">
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <h3>Total PCs</h3>
+                        <div class="stat-icon-wrapper blue-glow">
+                            <i data-lucide="monitor" class="stat-icon"></i>
+                        </div>
+                    </div>
+                    <div class="stat-value" id="total-pcs">0</div>
+                    <div class="stat-subtitle" id="success-pcs">0 Configured</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <h3>Total Routers</h3>
+                        <div class="stat-icon-wrapper purple-glow">
+                            <i data-lucide="router" class="stat-icon"></i>
+                        </div>
+                    </div>
+                    <div class="stat-value" id="total-routers">0</div>
+                    <div class="stat-subtitle" id="success-routers">0 Configured</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <h3>Ping Tests</h3>
+                        <div class="stat-icon-wrapper green-glow">
+                            <i data-lucide="activity" class="stat-icon"></i>
+                        </div>
+                    </div>
+                    <div class="stat-value" id="total-pings">0</div>
+                    <div class="stat-subtitle" id="success-pings">0 Successful</div>
+                </div>
+            </section>
+
+            <!-- Network Topology Visualizer -->
+            <section class="topology-section">
+                <div class="topology-card">
+                    <div class="topology-header">
+                        <div class="title-with-icon">
+                            <i data-lucide="network" class="section-icon"></i>
+                            <div>
+                                <h2>Network Topology Layout</h2>
+                                <p class="section-subtitle">Drag nodes · Zoom in/out · Connect devices · Inspect links</p>
+                            </div>
+                        </div>
+                        <div class="topology-controls">
+                            <!-- Zoom controls -->
+                            <button id="btn-zoom-in" class="control-btn" title="Zoom In">
+                                <i data-lucide="zoom-in"></i> Zoom In
+                            </button>
+                            <button id="btn-zoom-out" class="control-btn" title="Zoom Out">
+                                <i data-lucide="zoom-out"></i> Zoom Out
+                            </button>
+                            <button id="btn-reset-view" class="control-btn" title="Reset View">
+                                <i data-lucide="maximize-2"></i> Fit
+                            </button>
+                            <div class="control-divider"></div>
+                            <!-- Connect rope tool -->
+                            <button id="btn-connect" class="control-btn connect-btn" title="Draw Connection">
+                                <i data-lucide="cable"></i> Connect
+                            </button>
+                            <div class="control-divider"></div>
+                            <!-- Toggle labels / regions -->
+                            <button id="btn-labels" class="control-btn active" title="Toggle Port Labels">
+                                <i data-lucide="tags"></i> Ports
+                            </button>
+                            <button id="btn-regions" class="control-btn active" title="Toggle Regions">
+                                <i data-lucide="map-pin"></i> Regions
+                            </button>
+                            <div class="control-divider"></div>
+                            <!-- Topology Selector -->
+                            <select id="topology-selector" class="control-btn" style="background: rgba(8,12,24,0.7); outline: none; border-color: rgba(255,255,255,0.1); cursor: pointer;" title="Select active topology file">
+                                <option value="KOTHANT.gns3">Loading...</option>
+                            </select>
+                            <button id="btn-download-gns3" class="control-btn" style="border-color: rgba(56,189,248,.4); color: var(--accent-blue);" title="Download current .gns3 file">
+                                <i data-lucide="download"></i> Download .gns3
+                            </button>
+                            <div class="control-divider"></div>
+                            <!-- AI Upload -->
+                            <button id="btn-upload" class="control-btn" style="border-color: rgba(168,85,247,.4); color: var(--accent-purple);" title="Scan topology image with Gemini AI">
+                                <i data-lucide="sparkles"></i> AI Scan Image
+                            </button>
+                            <input type="file" id="file-upload" accept="image/*" style="display:none">
+                            <div class="control-divider"></div>
+                            <!-- Save / Reset config -->
+                            <button id="btn-save" class="control-btn save-btn" title="Save manual config to manual.gns3">
+                                <i data-lucide="save"></i> Save Config
+                            </button>
+                            <button id="btn-restore" class="control-btn restore-btn" title="Reset to KOTHANT.gns3 default">
+                                <i data-lucide="rotate-ccw"></i> Reset Default
+                            </button>
+                            <!-- Save status badge -->
+                            <span id="save-status" class="save-status-badge" style="display:none"></span>
+                        </div>
+                    </div>
+
+                    <div class="topology-canvas-container" id="canvas-container">
+                        <!-- Info overlay (top-left HUD) -->
+                        <div class="topology-overlay" id="topology-overlay">
+                            Click or hover devices &amp; links to inspect
+                        </div>
+                        <!-- Connect mode banner (top-center) -->
+                        <div class="connect-banner" id="connect-banner">
+                            🔗 Connect Mode: Click SOURCE device
+                        </div>
+                        <!-- SVG Canvas -->
+                        <svg class="topology-svg" id="topology-svg"></svg>
+                    </div>
+
+                    <div class="topology-legend">
+                        <div class="legend-item"><span class="legend-dot pc"></span> VPC Node</div>
+                        <div class="legend-item"><span class="legend-dot router"></span> Router Node</div>
+                        <div class="legend-item"><span class="legend-line active"></span> Active Link</div>
+                        <div class="legend-item"><span class="legend-line success"></span> New (Success)</div>
+                        <div class="legend-item"><span class="legend-line fail"></span> New (Failed)</div>
+                        <div class="legend-item"><span class="legend-tip">⚙</span> Drag nodes · Scroll to zoom</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Device Detail Cards -->
+            <div class="devices-container">
+                <section class="device-section">
+                    <div class="section-title-bar">
+                        <i data-lucide="monitor" class="title-bar-icon"></i>
+                        <h2>Virtual PCs</h2>
+                    </div>
+                    <div class="device-grid" id="pc-grid"></div>
+                </section>
+                <section class="device-section">
+                    <div class="section-title-bar">
+                        <i data-lucide="router" class="title-bar-icon"></i>
+                        <h2>Routers</h2>
+                    </div>
+                    <div class="device-grid" id="router-grid"></div>
+                </section>
+            </div>
+
+            <!-- Connectivity Matrix -->
+            <section class="ping-section">
+                <div class="section-title-bar">
+                    <i data-lucide="arrow-left-right" class="title-bar-icon"></i>
+                    <h2>Connectivity Matrix (Ping Tests)</h2>
+                </div>
+                <div class="table-container">
+                    <table id="ping-table">
+                        <thead>
+                            <tr>
+                                <th>Source</th>
+                                <th>Destination</th>
+                                <th>Status</th>
+                                <th>Min/Avg/Max (ms)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ping-body"></tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- AI Scan Progress Modal -->
+    <div id="ai-modal" class="ai-modal" style="display:none;">
+        <div class="ai-modal-content">
+            <h3><i data-lucide="sparkles" style="color:var(--accent-purple)"></i> AI Topology Scanner</h3>
+            <ul class="ai-steps">
+                <li id="ai-step-1"><span class="step-icon">⏳</span> <span>Step 1: Scanning Image with Gemini AI</span></li>
+                <li id="ai-step-2"><span class="step-icon">⏳</span> <span>Step 2: Generating & Loading .gns3</span></li>
+                <li id="ai-step-3"><span class="step-icon">⏳</span> <span>Step 3: Setup Success</span></li>
+            </ul>
+        </div>
+    </div>
+
+    <script src="dashboard.js"></script>
+</body>
+</html>
