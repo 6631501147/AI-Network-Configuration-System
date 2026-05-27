@@ -10,10 +10,13 @@ import sys
 # Add scripts folder to path so we can import our ai_scanner modules
 sys.path.append(os.path.join(os.path.dirname(__file__), 'scripts'))
 try:
-    from ai_scanner.gemini_vision import analyze_image
+    from ai_scanner.gemini_vision import analyze_image, modify_topology
     from ai_scanner.gns3_builder import build_gns3
-except ImportError:
-    pass # handle failure gracefully
+except ImportError as _ie:
+    # Define fallback stubs so NameError never occurs at request time
+    def analyze_image(*a, **kw):   raise RuntimeError(f"ai_scanner import failed: {_ie}")
+    def build_gns3(*a, **kw):      raise RuntimeError(f"ai_scanner import failed: {_ie}")
+    def modify_topology(*a, **kw): raise RuntimeError(f"ai_scanner import failed: {_ie}")
 
 from email.parser import BytesParser
 from email.policy import default
@@ -69,22 +72,27 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 print(f"[ERROR] save-manual: {e}")
 
         elif self.path == '/api/scan-image':
-            length = int(self.headers.get('Content-Length', 0))
-            body = self.rfile.read(length)
-            content_type = self.headers.get('Content-Type', '')
-            
-            # Parse multipart/form-data
-            msg = BytesParser(policy=default).parsebytes(f"Content-Type: {content_type}\r\n\r\n".encode() + body)
-            image_bytes = None
-            mime_type = None
-            for part in msg.iter_parts():
-                if part.get_filename():
-                    image_bytes = part.get_payload(decode=True)
-                    mime_type = part.get_content_type()
-                    break
-            
-            if not image_bytes:
-                self._json(400, {"ok": False, "error": "No image uploaded"})
+            try:
+                length = int(self.headers.get('Content-Length', 0))
+                body = self.rfile.read(length)
+                content_type = self.headers.get('Content-Type', '')
+                
+                # Parse multipart/form-data
+                msg = BytesParser(policy=default).parsebytes(f"Content-Type: {content_type}\r\n\r\n".encode() + body)
+                image_bytes = None
+                mime_type = None
+                for part in msg.iter_parts():
+                    if part.get_filename():
+                        image_bytes = part.get_payload(decode=True)
+                        mime_type = part.get_content_type()
+                        break
+                
+                if not image_bytes:
+                    self._json(400, {"ok": False, "error": "No image uploaded"})
+                    return
+            except Exception as e:
+                self._json(500, {"ok": False, "error": f"Failed to parse request: {str(e)}"})
+                print(f"[ERROR] scan-image parsing: {e}")
                 return
                 
             try:
@@ -117,6 +125,35 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             except Exception as e:
                 self._json(500, {"ok": False, "error": str(e)})
 
+        elif self.path == '/api/modify-topology':
+            length = int(self.headers.get('Content-Length', 0))
+            body   = self.rfile.read(length)
+            try:
+                data        = json.loads(body)
+                instruction = data.get('instruction', '').strip()
+                current_gns3 = data.get('current_gns3', {})
+
+                if not instruction:
+                    self._json(400, {"ok": False, "error": "No instruction provided"})
+                    return
+                if not current_gns3:
+                    self._json(400, {"ok": False, "error": "No current topology provided. Upload an image first."})
+                    return
+
+                modified = modify_topology(instruction, current_gns3)
+
+                # Save as modified.gns3
+                modified_file = os.path.join(TOPOLOGY_DIR, 'modified.gns3')
+                os.makedirs(TOPOLOGY_DIR, exist_ok=True)
+                with open(modified_file, 'w', encoding='utf-8') as f:
+                    json.dump(modified, f, indent=2)
+
+                self._json(200, {"ok": True, "file": "topology/modified.gns3", "gns3": modified})
+                print(f"[AI MODIFY] modified.gns3 written")
+            except Exception as e:
+                self._json(500, {"ok": False, "error": str(e)})
+                print(f"[ERROR] modify-topology: {e}")
+
         else:
             self._json(404, {"ok": False, "error": "Not found"})
 
@@ -129,7 +166,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         self.wfile.write(body)
 
     def log_message(self, fmt, *args):
-        # Only log errors, not every GET request
+        # Suppress clean 200/304 noise; log everything else
         if args and str(args[1]) not in ('200', '304'):
             super().log_message(fmt, *args)
 
