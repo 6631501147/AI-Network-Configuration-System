@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Network Configuration Dashboard</title>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&family=Fira+Code:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="dashboard.css">
     <script src="https://unpkg.com/lucide@latest"></script>
 </head>
@@ -140,7 +140,7 @@
                         </div>
                         <!-- Connect mode banner (top-center) -->
                         <div class="connect-banner" id="connect-banner">
-                            🔗 Connect Mode: Click SOURCE device
+                            <i data-lucide="cable" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:6px;"></i> Connect Mode: Click SOURCE device
                         </div>
                         <!-- SVG Canvas -->
                         <svg class="topology-svg" id="topology-svg"></svg>
@@ -195,6 +195,28 @@
                     </table>
                 </div>
             </section>
+
+            <!-- Interactive Terminal -->
+            <section class="terminal-section">
+                <div class="section-title-bar">
+                    <i data-lucide="terminal" class="title-bar-icon"></i>
+                    <h2>Interactive CLI</h2>
+                </div>
+                <div class="terminal-container" id="terminal-container" onclick="document.getElementById('terminal-input').focus()">
+                    <div class="terminal-header">
+                        <div class="term-dots"><span class="red"></span><span class="yellow"></span><span class="green"></span></div>
+                        <div class="term-title">router_cli ~ admin</div>
+                    </div>
+                    <div class="terminal-body" id="terminal-output">
+                        <div class="term-line">Welcome to NetConf AI Router CLI.</div>
+                        <div class="term-line">Type <span class="term-highlight">ping &lt;ip/hostname&gt;</span> to test connectivity.</div>
+                    </div>
+                    <div class="terminal-input-row">
+                        <span class="term-prompt" id="term-prompt-active">R1&gt;</span>
+                        <input type="text" id="terminal-input" class="terminal-input" autocomplete="off" spellcheck="false" autofocus>
+                    </div>
+                </div>
+            </section>
         </main>
     </div>
 
@@ -203,10 +225,102 @@
         <div class="ai-modal-content">
             <h3><i data-lucide="sparkles" style="color:var(--accent-purple)"></i> AI Topology Scanner</h3>
             <ul class="ai-steps">
-                <li id="ai-step-1"><span class="step-icon">⏳</span> <span>Step 1: Scanning Image with Gemini AI</span></li>
-                <li id="ai-step-2"><span class="step-icon">⏳</span> <span>Step 2: Generating & Loading .gns3</span></li>
-                <li id="ai-step-3"><span class="step-icon">⏳</span> <span>Step 3: Setup Success</span></li>
+                <li id="ai-step-1"><span class="step-icon"><i data-lucide="clock"></i></span> <span>Step 1: Scanning Image with Gemini AI</span></li>
+                <li id="ai-step-2"><span class="step-icon"><i data-lucide="clock"></i></span> <span>Step 2: Generating &amp; Loading .gns3</span></li>
+                <li id="ai-step-3"><span class="step-icon"><i data-lucide="clock"></i></span> <span>Step 3: Setup Success</span></li>
             </ul>
+        </div>
+    </div>
+
+    <!-- Topology Verification Modal -->
+    <div id="topo-verify-modal" class="topo-verify-modal" style="display:none;">
+        <div class="topo-verify-card">
+            <div class="topo-verify-header">
+                <div class="topo-verify-header-icon">
+                    <i data-lucide="shield-check"></i>
+                </div>
+                <div>
+                    <h3 class="topo-verify-title">Topology Verification</h3>
+                    <p class="topo-verify-sub">All devices and links have been validated</p>
+                </div>
+                <button class="topo-verify-close" id="topo-verify-close" title="Close">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            <div class="topo-verify-summary" id="topo-verify-summary"></div>
+            <div class="topo-verify-section-title"><i data-lucide="link-2"></i> Link Connectivity</div>
+            <div class="topo-verify-links" id="topo-verify-links"></div>
+            <div class="topo-verify-section-title" style="margin-top:1rem;"><i data-lucide="server"></i> Device Status</div>
+            <div class="topo-verify-devices" id="topo-verify-devices"></div>
+            <button class="topo-verify-dismiss" id="topo-verify-dismiss">
+                <i data-lucide="check"></i> Looks Good
+            </button>
+        </div>
+    </div>
+
+    <!-- Chatbot Floating Widget -->
+    <div class="chatbot-wrapper" id="chatbot-wrapper">
+
+        <!-- FAB toggle button -->
+        <button class="chatbot-fab" id="chatbot-fab" title="Open AI Assistant">
+            <i data-lucide="bot"></i>
+        </button>
+
+        <!-- Chat Panel -->
+        <div class="chatbot-panel" id="chatbot-panel">
+            <!-- Header -->
+            <div class="chatbot-panel-header">
+                <div class="chatbot-panel-avatar">
+                    <i data-lucide="shield-alert"></i>
+                </div>
+                <div class="chatbot-panel-info">
+                    <div class="chatbot-panel-name">NetConf AI</div>
+                    <div class="chatbot-panel-status">
+                        <span class="chatbot-online-dot" id="chatbot-status-dot"></span>
+                        <span id="chatbot-status-text">Network Assistant</span>
+                    </div>
+                </div>
+                <div class="chatbot-panel-actions">
+                    <button class="chatbot-icon-btn" id="btn-clear-chat" title="Clear history">
+                        <i data-lucide="trash-2"></i>
+                    </button>
+                    <button class="chatbot-icon-btn" id="chatbot-close" title="Close">
+                        <i data-lucide="x"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Chat Feed -->
+            <div class="chat-feed" id="chat-feed">
+                <div class="chat-row bot">
+                    <div class="chat-avatar"><i data-lucide="bot"></i></div>
+                    <div class="chat-bubble">
+                        <div class="chat-bubble-body">
+                            Hi! I'm your Network AI Assistant.<br>
+                            Upload a topology image to generate a .gns3 file, or type an instruction to modify an existing one.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Suggestion Chips -->
+            <div class="chat-chips-row" id="chat-chips-row">
+                <button class="chat-chip" onclick="sendChip('Add 1 more PC')">Add 1 more PC</button>
+                <button class="chat-chip" onclick="sendChip('Add a router')">Add a router</button>
+                <button class="chat-chip" onclick="sendChip('Remove last device')">Remove last</button>
+            </div>
+
+            <!-- Input Bar -->
+            <div class="chat-input-bar">
+                <button id="btn-chat-attach" class="chat-icon-btn chat-attach-icon" title="Attach topology image">
+                    <i data-lucide="image-plus"></i>
+                </button>
+                <input type="file" id="chat-file-input" accept="image/*" style="display:none">
+                <input type="text" id="chat-text-input" class="chat-text-input" placeholder="Ask me anything..." maxlength="500" autocomplete="off">
+                <button id="btn-chat-send" class="chat-icon-btn chat-send-icon" title="Send">
+                    <i data-lucide="send-horizontal"></i>
+                </button>
+            </div>
         </div>
     </div>
 

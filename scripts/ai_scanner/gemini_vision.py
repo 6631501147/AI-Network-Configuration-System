@@ -109,3 +109,56 @@ def analyze_image(image_bytes: bytes, mime_type: str) -> dict:
     print("Gemini response received.")
     
     return extract_json(raw_text)
+
+# ── Text-based topology modification ────────────────────────────────────────
+
+MODIFY_PROMPT = """\
+You are an expert network engineer working with GNS3 topology files.
+
+Current GNS3 topology JSON:
+{current_gns3}
+
+User instruction: {instruction}
+
+Modify the topology according to the user's instruction.
+Return ONLY the modified GNS3 JSON object (no markdown, no code fences, no explanation).
+
+Rules:
+- Keep the EXACT same JSON structure as the input topology
+- For new PCs: use node_type "vpcs", continue numbering (PC3, PC4, ...)
+- For new routers: use node_type "dynamips", continue numbering (R2, R3, ...)
+- New device node_id should be a new UUID (use format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
+- Place new devices in a logical position (offset existing positions by ~100px)
+- Update the links array to connect new devices as instructed
+- Preserve all existing nodes and links unless the instruction says to remove them
+"""
+
+def modify_topology(instruction: str, current_gns3: dict) -> dict:
+    """Modify an existing GNS3 topology JSON based on a text instruction."""
+    load_dotenv()
+    api_key = os.environ.get("GEMINI_API_KEY", "")
+    if not api_key or api_key == "your_gemini_api_key_here":
+        raise ValueError("GEMINI_API_KEY is not configured in .env")
+
+    genai.configure(api_key=api_key)
+
+    model = genai.GenerativeModel(
+        model_name="gemini-2.5-flash",
+        safety_settings=SAFETY_SETTINGS,
+        generation_config=genai.GenerationConfig(
+            temperature=0.2,
+            max_output_tokens=8192,
+        ),
+    )
+
+    prompt = MODIFY_PROMPT.format(
+        current_gns3=json.dumps(current_gns3, indent=2),
+        instruction=instruction
+    )
+
+    print(f"[AI MODIFY] Instruction: {instruction}")
+    response = model.generate_content(prompt)
+    raw_text = response.text
+    print("[AI MODIFY] Gemini response received.")
+
+    return extract_json(raw_text)
