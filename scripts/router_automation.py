@@ -1,7 +1,9 @@
 from netmiko import ConnectHandler
 import socket
 import time
+import os
 from datetime import datetime
+from scripts.logger import log_info, log_success, log_error, log_session_start, log_session_end
 
 # ==================================================
 # GNS3 VM IP
@@ -232,6 +234,7 @@ router_configs = {
 # ==================================================
 def configure_pc(name, info):
     print(f"\n[PC] Configuring {name}...")
+    log_info(f"Configuring PC: {name} at {info['host']}:{info['port']}")
 
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -264,11 +267,13 @@ def configure_pc(name, info):
         s.close()
 
         print(f"[PC] {name} configured successfully")
+        log_success(f"PC {name} configured successfully")
         return True, output
 
     except Exception as e:
         error = f"[PC] Error configuring {name}: {e}"
         print(error)
+        log_error(f"PC {name} configuration failed: {e}")
         return False, error
 
 # ==================================================
@@ -276,6 +281,7 @@ def configure_pc(name, info):
 # ==================================================
 def configure_router(name, info):
     print(f"\n[ROUTER] Connecting to {name}...")
+    log_info(f"Connecting to router: {name} at {info['host']}:{info['port']}")
 
     device = {
         "device_type": "cisco_ios_telnet",
@@ -295,6 +301,7 @@ def configure_router(name, info):
 
         print(output)
         print(f"[ROUTER] {name} configured successfully")
+        log_success(f"Router {name} configured and saved to NVRAM")
 
         conn.disconnect()
         return True, output
@@ -302,6 +309,7 @@ def configure_router(name, info):
     except Exception as e:
         error = f"[ROUTER] Error configuring {name}: {e}"
         print(error)
+        log_error(f"Router {name} configuration failed: {e}")
         return False, error
 
 # ==================================================
@@ -374,13 +382,20 @@ def ping_from_router(router_name, target_ip):
 # ==================================================
 # MAIN PROGRAM
 # ==================================================
+RESULTS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "results")
+
+
 def main():
+    log_session_start()
+    os.makedirs(RESULTS_DIR, exist_ok=True)
+
     report = []
     report.append("AI-Based Automatic Enterprise Network Configuration Report")
     report.append(f"Generated at: {datetime.now()}")
     report.append("=" * 70)
 
     print("\n========== AUTO CONFIG START ==========")
+    log_info("Auto-configuration session started")
 
     # 1. Configure PCs automatically
     report.append("\n\n===== PC CONFIGURATION =====")
@@ -422,14 +437,18 @@ def main():
         result = ping_from_router(router_name, target_ip)
         report.append(result)
 
-    # 5. Save report
+    # 5. Save report to results/ folder (FR-6)
     report_text = "\n".join(report)
+    report_path = os.path.join(RESULTS_DIR, "auto_config_report.txt")
 
-    with open("enterprise_auto_config_report.txt", "w", encoding="utf-8") as file:
+    with open(report_path, "w", encoding="utf-8") as file:
         file.write(report_text)
 
+    log_success(f"Report saved to {report_path}")
+    log_session_end()
+
     print("\n========== AUTO CONFIG COMPLETE ==========")
-    print("Report saved as: enterprise_auto_config_report.txt")
+    print(f"Report saved as: {report_path}")
 
 
 if __name__ == "__main__":
