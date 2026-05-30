@@ -1416,9 +1416,23 @@ async function sendTextMessage() {
 
     appendChatMessage('user', 'text', text);
 
+    // If no topology has been loaded via image scan, load the currently selected one
     if (!currentGns3) {
-        appendChatMessage('bot', 'text', 'Please upload a topology image first so I have a base .gns3 to modify.');
-        return;
+        const sel = document.getElementById('topology-selector');
+        const selectedFile = sel ? sel.value : 'KOTHANT.gns3';
+        try {
+            const res = await fetch(`topology/${selectedFile}?t=${Date.now()}`);
+            if (res.ok) {
+                currentGns3 = await res.json();
+                appendChatMessage('bot', 'text', `Using current topology: **${selectedFile}**`);
+            } else {
+                appendChatMessage('bot', 'text', 'Could not load the current topology. Please upload a topology image first.');
+                return;
+            }
+        } catch (err) {
+            appendChatMessage('bot', 'text', 'Could not load the current topology. Please upload a topology image first.');
+            return;
+        }
     }
 
     setChatBusy(true);
@@ -1439,6 +1453,13 @@ async function sendTextMessage() {
             currentGns3 = gns3Data;  // update base for chained edits
             appendChatMessage('bot', 'code', gns3Data, gns3Data);
             await populateTopologies('modified.gns3');
+
+            // Also refresh the PC/Router cards and ping table immediately
+            customLinks.length = 0;
+            customLinkCounter  = 0;
+            nodeRegistry       = {};
+            nodePositions      = {};
+            parseAndRender(gns3Data);
         } else {
             appendChatMessage('bot', 'error', `Modification failed: ${json.error}`);
         }
@@ -1669,22 +1690,28 @@ async function processTerminalCommand(cmd) {
     } else if (baseCmd === 'clear' || baseCmd === 'cls') {
         const out = document.getElementById('terminal-output');
         if (out) out.innerHTML = '';
-    } else if (baseCmd === 'ssh' || baseCmd === 'connect') {
+    } else if (baseCmd === 'ssh' || baseCmd === 'session' || baseCmd === 'use' || baseCmd === 'switch' || baseCmd === 'goto') {
         const target = parts[1];
         if (!target) {
             appendTermLine(`Usage: ${baseCmd} &lt;hostname&gt;`);
             return;
         }
+        const prev = currentTerminalHost;
         currentTerminalHost = target.toUpperCase();
         const promptEl = document.getElementById('term-prompt-active');
         if (promptEl) promptEl.textContent = `${currentTerminalHost}>`;
-        appendTermLine(`Connected to ${currentTerminalHost}. Console is now active.`);
+        appendTermLine(`Session switched: <span class="term-highlight">${prev}</span> &rarr; <span class="term-highlight">${currentTerminalHost}</span>`);
+        appendTermLine(`${currentTerminalHost} is now active. Type <span class="term-highlight">help</span> for available commands.`);
     } else if (baseCmd === 'help') {
         appendTermLine('Available commands:');
-        appendTermLine('  <span class="term-highlight">ping &lt;target&gt;</span> - Send ICMP ECHO_REQUEST to network hosts');
-        appendTermLine('  <span class="term-highlight">connect &lt;hostname&gt;</span> - Change active terminal session');
-        appendTermLine('  <span class="term-highlight">clear</span> - Clear the terminal screen');
-        appendTermLine('  <span class="term-highlight">help</span> - Show this message');
+        appendTermLine('  <span class="term-highlight">ping &lt;target&gt;</span>          - Send ICMP ECHO_REQUEST to network hosts');
+        appendTermLine('  <span class="term-highlight">session &lt;hostname&gt;</span>     - Switch active console session');
+        appendTermLine('  <span class="term-highlight">use &lt;hostname&gt;</span>         - Alias: switch active session');
+        appendTermLine('  <span class="term-highlight">switch &lt;hostname&gt;</span>      - Alias: switch active session');
+        appendTermLine('  <span class="term-highlight">goto &lt;hostname&gt;</span>        - Alias: switch active session');
+        appendTermLine('  <span class="term-highlight">ssh &lt;hostname&gt;</span>         - Alias: switch active session');
+        appendTermLine('  <span class="term-highlight">clear</span>                    - Clear the terminal screen');
+        appendTermLine('  <span class="term-highlight">help</span>                     - Show this message');
     } else {
         appendTermLine(`<span class="term-error">% Unknown command: ${baseCmd}</span>`);
     }
