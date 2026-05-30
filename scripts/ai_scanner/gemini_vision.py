@@ -56,25 +56,48 @@ Detection rules:
 """
 
 def extract_json(text: str) -> dict:
+    # 1. Strip Gemini 2.5 thinking traces (e.g. <think>...</think>)
+    text = re.sub(r'<think>[\s\S]*?</think>', '', text, flags=re.IGNORECASE).strip()
+
+    # 2. Try direct parse
     try:
         return json.loads(text.strip())
     except json.JSONDecodeError:
         pass
-    
+
+    # 3. Try to extract from markdown code fences
     patterns = [
         r'```json\s*([\s\S]*?)\s*```',
         r'```\s*([\s\S]*?)\s*```',
-        r'\{[\s\S]*\}',
     ]
     for pattern in patterns:
         match = re.search(pattern, text, re.DOTALL)
         if match:
-            candidate = match.group(1) if '```' in pattern else match.group(0)
+            candidate = match.group(1).strip()
             try:
-                return json.loads(candidate.strip())
+                return json.loads(candidate)
             except json.JSONDecodeError:
                 continue
-    raise ValueError("Could not extract valid JSON from Gemini response.")
+
+    # 4. Try to find the outermost JSON object/array
+    brace_match = re.search(r'(\{[\s\S]*\})', text, re.DOTALL)
+    if brace_match:
+        candidate = brace_match.group(1).strip()
+        try:
+            return json.loads(candidate)
+        except json.JSONDecodeError:
+            pass
+
+    # 5. Last resort: try a broader search for array
+    bracket_match = re.search(r'(\[[\s\S]*\])', text, re.DOTALL)
+    if bracket_match:
+        candidate = bracket_match.group(1).strip()
+        try:
+            return json.loads(candidate)
+        except json.JSONDecodeError:
+            pass
+
+    raise ValueError(f"Could not extract valid JSON from Gemini response. Raw (first 500 chars): {text[:500]}")
 
 def analyze_image(image_bytes: bytes, mime_type: str) -> dict:
     # Reload .env dynamically so the user doesn't have to restart the server
@@ -121,15 +144,18 @@ Current GNS3 topology JSON:
 User instruction: {instruction}
 
 Modify the topology according to the user's instruction.
-Return ONLY the modified GNS3 JSON object (no markdown, no code fences, no explanation).
+Return ONLY the modified GNS3 JSON object. No markdown fences, no explanation, no <think> tags.
+Start your response with the opening brace {{ and end with the closing brace }}.
 
 Rules:
 - Keep the EXACT same JSON structure as the input topology
 - For new PCs: use node_type "vpcs", continue numbering (PC3, PC4, ...)
 - For new routers: use node_type "dynamips", continue numbering (R2, R3, ...)
+- For new switches: use node_type "ethernet_switch", continue numbering (SW2, SW3, ...)
 - New device node_id should be a new UUID (use format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
-- Place new devices in a logical position (offset existing positions by ~100px)
+- Place new devices in a logical position (offset existing positions by ~150px)
 - Update the links array to connect new devices as instructed
+- Each link must have: link_id (new UUID), nodes (list of 2 objects with node_id, adapter_number, port_number, label.text)
 - Preserve all existing nodes and links unless the instruction says to remove them
 """
 
