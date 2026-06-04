@@ -13,10 +13,12 @@ try:
     from ai_scanner.gemini_vision import analyze_image, modify_topology
     from ai_scanner.gns3_builder import build_gns3
 except ImportError as _ie:
-    # Define fallback stubs so NameError never occurs at request time
-    def analyze_image(*a, **kw):   raise RuntimeError(f"ai_scanner import failed: {_ie}")
-    def build_gns3(*a, **kw):      raise RuntimeError(f"ai_scanner import failed: {_ie}")
-    def modify_topology(*a, **kw): raise RuntimeError(f"ai_scanner import failed: {_ie}")
+    # Python 3 deletes the 'as' variable after the except block, so capture
+    # the message in a plain string that the stub closures can reference later.
+    _import_err = str(_ie)
+    def analyze_image(*a, **kw):   raise RuntimeError(f"ai_scanner import failed: {_import_err}")
+    def build_gns3(*a, **kw):      raise RuntimeError(f"ai_scanner import failed: {_import_err}")
+    def modify_topology(*a, **kw): raise RuntimeError(f"ai_scanner import failed: {_import_err}")
 
 from email.parser import BytesParser
 from email.policy import default
@@ -111,6 +113,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self._json(200, {"ok": True, "file": "topology/scanned.gns3"})
                 print(f"[AI SCAN] Successfully generated topology/scanned.gns3")
             except Exception as e:
+                import traceback
+                traceback.print_exc()
                 self._json(500, {"ok": False, "error": str(e)})
                 print(f"[ERROR] scan-image: {e}")
 

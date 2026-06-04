@@ -2,16 +2,10 @@ import base64
 import json
 import re
 import os
-import google.generativeai as genai
-from google.generativeai.types import HarmCategory, HarmBlockThreshold
+import time
+from google import genai
+from google.genai import types
 from dotenv import load_dotenv
-
-SAFETY_SETTINGS = {
-    HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
-    HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
-    HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
-    HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
-}
 
 PROMPT = """
 You are an expert network engineer analyzing a network topology diagram.
@@ -55,86 +49,6 @@ Detection rules:
 - Detect ALL cables/connections between devices
 """
 
-def extract_json(text: str) -> dict:
-    # 1. Strip Gemini 2.5 thinking traces (e.g. <think>...</think>)
-    text = re.sub(r'<think>[\s\S]*?</think>', '', text, flags=re.IGNORECASE).strip()
-
-    # 2. Try direct parse
-    try:
-        return json.loads(text.strip())
-    except json.JSONDecodeError:
-        pass
-
-    # 3. Try to extract from markdown code fences
-    patterns = [
-        r'```json\s*([\s\S]*?)\s*```',
-        r'```\s*([\s\S]*?)\s*```',
-    ]
-    for pattern in patterns:
-        match = re.search(pattern, text, re.DOTALL)
-        if match:
-            candidate = match.group(1).strip()
-            try:
-                return json.loads(candidate)
-            except json.JSONDecodeError:
-                continue
-
-    # 4. Try to find the outermost JSON object/array
-    brace_match = re.search(r'(\{[\s\S]*\})', text, re.DOTALL)
-    if brace_match:
-        candidate = brace_match.group(1).strip()
-        try:
-            return json.loads(candidate)
-        except json.JSONDecodeError:
-            pass
-
-    # 5. Last resort: try a broader search for array
-    bracket_match = re.search(r'(\[[\s\S]*\])', text, re.DOTALL)
-    if bracket_match:
-        candidate = bracket_match.group(1).strip()
-        try:
-            return json.loads(candidate)
-        except json.JSONDecodeError:
-            pass
-
-    raise ValueError(f"Could not extract valid JSON from Gemini response. Raw (first 500 chars): {text[:500]}")
-
-def analyze_image(image_bytes: bytes, mime_type: str) -> dict:
-    # Reload .env dynamically so the user doesn't have to restart the server
-    load_dotenv()
-    api_key = os.environ.get("GEMINI_API_KEY", "")
-    if not api_key or api_key == "your_gemini_api_key_here":
-        raise ValueError("GEMINI_API_KEY is not configured in .env")
-        
-    genai.configure(api_key=api_key)
-
-    b64_image = base64.b64encode(image_bytes).decode("utf-8")
-    
-    model = genai.GenerativeModel(
-        model_name="gemini-2.5-flash",
-        safety_settings=SAFETY_SETTINGS,
-        generation_config=genai.GenerationConfig(
-            temperature=0.1,
-            max_output_tokens=8192,
-        ),
-    )
-
-    image_part = {
-        "inline_data": {
-            "mime_type": mime_type,
-            "data": b64_image,
-        }
-    }
-
-    print("Sending image to Gemini Vision API...")
-    response = model.generate_content([PROMPT, image_part])
-    raw_text = response.text
-    print("Gemini response received.")
-    
-    return extract_json(raw_text)
-
-# ── Text-based topology modification ────────────────────────────────────────
-
 MODIFY_PROMPT = """\
 You are an expert network engineer working with GNS3 topology files.
 
@@ -159,31 +73,131 @@ Rules:
 - Preserve all existing nodes and links unless the instruction says to remove them
 """
 
-def modify_topology(instruction: str, current_gns3: dict) -> dict:
-    """Modify an existing GNS3 topology JSON based on a text instruction."""
+
+def _make_client() -> genai.Client:
+    """Load API key from .env and return a configured genai.Client."""
     load_dotenv()
     api_key = os.environ.get("GEMINI_API_KEY", "")
     if not api_key or api_key == "your_gemini_api_key_here":
         raise ValueError("GEMINI_API_KEY is not configured in .env")
+    return genai.Client(api_key=api_key)
 
-    genai.configure(api_key=api_key)
 
-    model = genai.GenerativeModel(
-        model_name="gemini-2.5-flash",
-        safety_settings=SAFETY_SETTINGS,
-        generation_config=genai.GenerationConfig(
+# Model cascade: try most capable first, fall back if overloaded
+_MODEL_CASCADE = [
+    "gemini-2.5-flash",
+    "gemini-2.0-flash",
+    "gemini-1.5-flash",
+]
+
+
+def _call_with_retry(client, contents, config, max_retries=2):
+    """Try each model in _MODEL_CASCADE, with backoff per model on 503/429."""
+    from google.genai import errors as genai_errors
+
+    last_err = None
+    for model in _MODEL_CASCADE:
+        delay = 2
+        for attempt in range(max_retries + 1):
+            try:
+                print(f"[Gemini] Trying model: {model} (attempt {attempt + 1})")
+                return client.models.generate_content(
+                    model=model,
+                    contents=contents,
+                    config=config,
+                )
+            except genai_errors.ServerError as e:
+                # 503 = overloaded, 429 = rate limited — both are retryable
+                if e.status_code in (503, 429):
+                    if attempt < max_retries:
+                        print(f"[Gemini] {model} overloaded (HTTP {e.status_code}). Retrying in {delay}s...")
+                        time.sleep(delay)
+                        delay *= 2
+                    else:
+                        print(f"[Gemini] {model} still unavailable after {max_retries+1} tries. Trying next model...")
+                        last_err = e
+                        break
+                else:
+                    raise  # 400 bad request, 401 auth error, etc. — don't retry
+            except Exception:
+                raise  # Unexpected error — surface immediately
+    raise RuntimeError(f"All Gemini models unavailable. Last error: {last_err}")
+
+
+def extract_json(text: str) -> dict:
+    # 1. Strip Gemini 2.5 thinking traces (e.g. <think>...</think>)
+    text = re.sub(r'<think>[\s\S]*?</think>', '', text, flags=re.IGNORECASE).strip()
+
+    # 2. Try direct parse
+    try:
+        return json.loads(text.strip())
+    except json.JSONDecodeError:
+        pass
+
+    # 3. Try to extract from markdown code fences
+    patterns = [
+        r'```json\s*([\s\S]*?)\s*```',
+        r'```\s*([\s\S]*?)\s*```',
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, text, re.DOTALL)
+        if match:
+            candidate = match.group(1).strip()
+            try:
+                return json.loads(candidate)
+            except json.JSONDecodeError:
+                continue
+
+    # 4. Last resort: find outermost { ... }
+    match = re.search(r'\{[\s\S]*\}', text, re.DOTALL)
+    if match:
+        try:
+            return json.loads(match.group(0))
+        except json.JSONDecodeError:
+            pass
+
+    raise ValueError("Could not extract valid JSON from Gemini response.")
+
+
+def analyze_image(image_bytes: bytes, mime_type: str) -> dict:
+    """Send an image to Gemini and return the parsed topology JSON."""
+    client = _make_client()
+
+    image_part = types.Part.from_bytes(data=image_bytes, mime_type=mime_type)
+
+    print("Sending image to Gemini Vision API...")
+    response = _call_with_retry(
+        client,
+        contents=[PROMPT, image_part],
+        config=types.GenerateContentConfig(
+            temperature=0.1,
+            max_output_tokens=8192,
+        ),
+    )
+    raw_text = response.text
+    print("Gemini response received.")
+
+    return extract_json(raw_text)
+
+
+def modify_topology(instruction: str, current_gns3: dict) -> dict:
+    """Modify an existing GNS3 topology JSON based on a text instruction."""
+    client = _make_client()
+
+    prompt = MODIFY_PROMPT.format(
+        current_gns3=json.dumps(current_gns3, indent=2),
+        instruction=instruction,
+    )
+
+    print(f"[AI MODIFY] Instruction: {instruction}")
+    response = _call_with_retry(
+        client,
+        contents=prompt,
+        config=types.GenerateContentConfig(
             temperature=0.2,
             max_output_tokens=8192,
         ),
     )
-
-    prompt = MODIFY_PROMPT.format(
-        current_gns3=json.dumps(current_gns3, indent=2),
-        instruction=instruction
-    )
-
-    print(f"[AI MODIFY] Instruction: {instruction}")
-    response = model.generate_content(prompt)
     raw_text = response.text
     print("[AI MODIFY] Gemini response received.")
 
