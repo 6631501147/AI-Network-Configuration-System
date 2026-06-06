@@ -1,0 +1,85 @@
+{
+  "version": 1,
+  "saved_at": "2026-06-02T06:33:43.257Z",
+  "source_topology": "topology/KOTHANT.gns3",
+  "node_positions": {
+    "0957faa6-abb6-435f-a931-6759237391b6": {
+      "x": -153,
+      "y": -233
+    },
+    "c1aa127a-d070-42c4-9887-acdfc66ed974": {
+      "x": -385,
+      "y": -259
+    },
+    "00faa651-8484-442a-8466-a182213fa972": {
+      "x": -291,
+      "y": -125
+    },
+    "79e7458c-2cb6-4092-9e7a-28bd0844755e": {
+      "x": -292,
+      "y": 12
+    },
+    "edd21733-be99-4d35-b3b6-f0bb92ba8ec5": {
+      "x": -153,
+      "y": -120
+    },
+    "642963a3-c7d7-4981-9b3c-348f906bd45b": {
+      "x": -105,
+      "y": 14
+    },
+    "45d9132e-2b59-4e05-ada4-e95f53d8b146": {
+      "x": 11,
+      "y": -111
+    },
+    "399fb888-0eb1-4daa-b44b-652068c10256": {
+      "x": 28,
+      "y": 20
+    },
+    "2cb6a249-95c5-4e3e-99c5-293bda15e5e0": {
+      "x": -143,
+      "y": 146
+    },
+    "c9c1a8ce-d009-443e-b048-7479de01a3fe": {
+      "x": -139,
+      "y": 274
+    },
+    "a7c7f428-e94a-4453-bdc7-2f70f05ebdf4": {
+      "x": -385,
+      "y": -446
+    },
+    "b5f63f63-757a-4b1d-8188-73fda7f025c0": {
+      "x": -153,
+      "y": -329
+    },
+    "7d8aa9fd-8c40-48b7-a742-6d60afc6e7bb": {
+      "x": -154,
+      "y": -439
+    }
+  },
+  "custom_links": [
+    {
+      "id": "custom-1",
+      "source_id": "79e7458c-2cb6-4092-9e7a-28bd0844755e",
+      "source_name": "PC2",
+      "source_type": "PC",
+      "target_id": "2cb6a249-95c5-4e3e-99c5-293bda15e5e0",
+      "target_name": "R5",
+      "target_type": "Router",
+      "source_port": "eth0",
+      "target_port": "eth0",
+      "status": "SUCCESS"
+    },
+    {
+      "id": "custom-2",
+      "source_id": "c9c1a8ce-d009-443e-b048-7479de01a3fe",
+      "source_name": "PC5",
+      "source_type": "PC",
+      "target_id": "79e7458c-2cb6-4092-9e7a-28bd0844755e",
+      "target_name": "PC2",
+      "target_type": "PC",
+      "source_port": "eth0",
+      "target_port": "eth0",
+      "status": "FAIL"
+    }
+  ]
+}

@@ -1,6 +1,21 @@
 // ==========================================
 // GLOBAL STATE
 // ==========================================
+
+// Gemini model fallback order (matches dropdown)
+const GEMINI_FALLBACK_MODELS = [
+    'gemini-2.0-flash',
+    'gemini-2.5-flash-preview-05-20',
+    'gemini-2.5-pro-preview-06-05',
+    'gemini-3.0-flash',
+    'gemini-3.5-pro',
+];
+
+function getSelectedModel() {
+    const sel = document.getElementById('gemini-model-select');
+    return sel ? sel.value : 'gemini-2.5-flash-preview-05-20';
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     populateTopologies();
     fetchTopology();
@@ -1147,6 +1162,20 @@ function initChatbot() {
         if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendTextMessage(); }
     });
 
+    // Model selector — show current model name in status
+    const modelSel = document.getElementById('gemini-model-select');
+    if (modelSel) {
+        modelSel.addEventListener('change', () => {
+            const label = modelSel.options[modelSel.selectedIndex]?.text || 'AI';
+            const statusTxt = document.getElementById('chatbot-status-text');
+            if (statusTxt && !chatBusy) statusTxt.textContent = `Model: ${label}`;
+            setTimeout(() => {
+                const s = document.getElementById('chatbot-status-text');
+                if (s && !chatBusy) s.textContent = 'Network Assistant';
+            }, 2500);
+        });
+    }
+
     // Init lucide icons inside widget
     const panel = document.getElementById('chatbot-panel');
     if (panel) lucide.createIcons({ nodes: [panel] });
@@ -1358,7 +1387,7 @@ function runTopologyFromChat(gns3Data, runBtn) {
 }
 
 
-// -- Image upload -------------------------
+// -- Image upload (with model auto-fallback) --
 async function handleChatImageUpload(file) {
     if (chatBusy) return;
     if (file.size > 10 * 1024 * 1024) {
@@ -1377,29 +1406,55 @@ async function handleChatImageUpload(file) {
         const formData = new FormData();
         formData.append('file', file);
 
-        try {
-            const res  = await fetch('/api/scan-image', { method: 'POST', body: formData });
-            const json = await res.json();
-            hideChatThinking();
+        // Build fallback list: selected model first, then rest
+        const chosen = getSelectedModel();
+        const trialOrder = [chosen, ...GEMINI_FALLBACK_MODELS.filter(m => m !== chosen)];
 
-            if (json.ok) {
-                const gns3Res = await fetch(json.file + '?t=' + Date.now());
-                if (!gns3Res.ok) throw new Error('Could not load generated .gns3 file.');
-                const gns3Data = await gns3Res.json();
-                gns3Data._chatLabel = 'scanned.gns3';
+        let json = null;
+        let usedModel = chosen;
 
-                currentGns3 = gns3Data;
-                appendChatMessage('bot', 'code', gns3Data, gns3Data);
-                await populateTopologies('scanned.gns3');
-            } else {
-                appendChatMessage('bot', 'error', `Scan failed: ${json.error}`);
+        for (const model of trialOrder) {
+            try {
+                const res = await fetch(`/api/scan-image?model=${encodeURIComponent(model)}`,
+                    { method: 'POST', body: formData });
+                json = await res.json();
+
+                if (json.ok) { usedModel = model; break; }
+
+                // If 404 model-not-found, try next
+                const errStr = (json.error || '').toLowerCase();
+                const isModelMissing = errStr.includes('not found') || errStr.includes('404') || errStr.includes('not supported');
+                if (isModelMissing) {
+                    appendChatMessage('bot', 'text',
+                        `⚠️ Model **${model}** not available. Trying next…`);
+                    continue;
+                }
+                break; // real error, don't retry
+            } catch (err) {
+                json = { ok: false, error: err.message };
+                break;
             }
-        } catch (err) {
-            hideChatThinking();
-            appendChatMessage('bot', 'error', `Error: ${err.message}`);
-        } finally {
-            setChatBusy(false);
         }
+
+        hideChatThinking();
+
+        if (json && json.ok) {
+            // Update dropdown to the model that actually worked
+            const sel = document.getElementById('gemini-model-select');
+            if (sel) sel.value = usedModel;
+
+            const gns3Res = await fetch(json.file + '?t=' + Date.now());
+            if (!gns3Res.ok) throw new Error('Could not load generated .gns3 file.');
+            const gns3Data = await gns3Res.json();
+            gns3Data._chatLabel = 'scanned.gns3';
+
+            currentGns3 = gns3Data;
+            appendChatMessage('bot', 'code', gns3Data, gns3Data);
+            await populateTopologies('scanned.gns3');
+        } else {
+            appendChatMessage('bot', 'error', `Scan failed: ${json?.error || 'Unknown error'}`);
+        }
+        setChatBusy(false);
     };
     reader.readAsDataURL(file);
 }
@@ -1438,37 +1493,58 @@ async function sendTextMessage() {
     setChatBusy(true);
     showChatThinking();
 
-    try {
-        const res  = await fetch('/api/modify-topology', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ instruction: text, current_gns3: currentGns3 })
-        });
-        const json = await res.json();
-        hideChatThinking();
+    // Build fallback list: selected model first
+    const chosen = getSelectedModel();
+    const trialOrder = [chosen, ...GEMINI_FALLBACK_MODELS.filter(m => m !== chosen)];
 
-        if (json.ok) {
-            const gns3Data = json.gns3;
-            gns3Data._chatLabel = 'modified.gns3';
-            currentGns3 = gns3Data;  // update base for chained edits
-            appendChatMessage('bot', 'code', gns3Data, gns3Data);
-            await populateTopologies('modified.gns3');
+    let json = null;
+    let usedModel = chosen;
 
-            // Also refresh the PC/Router cards and ping table immediately
-            customLinks.length = 0;
-            customLinkCounter  = 0;
-            nodeRegistry       = {};
-            nodePositions      = {};
-            parseAndRender(gns3Data);
-        } else {
-            appendChatMessage('bot', 'error', `Modification failed: ${json.error}`);
+    for (const model of trialOrder) {
+        try {
+            const res = await fetch(`/api/modify-topology?model=${encodeURIComponent(model)}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ instruction: text, current_gns3: currentGns3 })
+            });
+            json = await res.json();
+
+            if (json.ok) { usedModel = model; break; }
+
+            const errStr = (json.error || '').toLowerCase();
+            const isModelMissing = errStr.includes('not found') || errStr.includes('404') || errStr.includes('not supported');
+            if (isModelMissing) {
+                continue; // try next model silently
+            }
+            break;
+        } catch (err) {
+            json = { ok: false, error: err.message };
+            break;
         }
-    } catch (err) {
-        hideChatThinking();
-        appendChatMessage('bot', 'error', `Error: ${err.message}`);
-    } finally {
-        setChatBusy(false);
     }
+
+    hideChatThinking();
+
+    if (json && json.ok) {
+        // Update dropdown to whichever model succeeded
+        const sel = document.getElementById('gemini-model-select');
+        if (sel) sel.value = usedModel;
+
+        const gns3Data = json.gns3;
+        gns3Data._chatLabel = 'modified.gns3';
+        currentGns3 = gns3Data;
+        appendChatMessage('bot', 'code', gns3Data, gns3Data);
+        await populateTopologies('modified.gns3');
+
+        customLinks.length = 0;
+        customLinkCounter  = 0;
+        nodeRegistry       = {};
+        nodePositions      = {};
+        parseAndRender(gns3Data);
+    } else {
+        appendChatMessage('bot', 'error', `Modification failed: ${json?.error || 'Unknown error'}`);
+    }
+    setChatBusy(false);
 }
 
 // -- Clear history ------------------------
