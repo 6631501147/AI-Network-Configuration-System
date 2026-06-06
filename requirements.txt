@@ -1,4 +1,6 @@
 netmiko
 paramiko
-google-generativeai
+google-genai
 python-dotenv
+PyMySQL
+bcrypt
