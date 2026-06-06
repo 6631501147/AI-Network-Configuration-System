@@ -90,12 +90,13 @@ def _get_client() -> genai.Client:
     return genai.Client(api_key=api_key)
 
 
-def _call_with_retry(client: genai.Client, contents, config: types.GenerateContentConfig):
+def _call_with_retry(client: genai.Client, contents, config: types.GenerateContentConfig, model_name: str = None):
     """Call the Gemini API with exponential backoff on 429 / quota errors."""
+    target_model = model_name or MODEL_NAME
     for attempt in range(1, MAX_RETRIES + 1):
         try:
             return client.models.generate_content(
-                model=MODEL_NAME,
+                model=target_model,
                 contents=contents,
                 config=config,
             )
@@ -151,7 +152,7 @@ def extract_json(text: str) -> dict:
     raise ValueError(f"Could not extract valid JSON from Gemini response. Raw (first 500 chars): {text[:500]}")
 
 
-def analyze_image(image_bytes: bytes, mime_type: str) -> dict:
+def analyze_image(image_bytes: bytes, mime_type: str, model_name: str = None) -> dict:
     """Analyze a network topology image and return structured JSON."""
     client = _get_client()
 
@@ -162,13 +163,14 @@ def analyze_image(image_bytes: bytes, mime_type: str) -> dict:
         max_output_tokens=8192,
     )
 
-    print(f"[SCAN] Sending image to Gemini API (model: {MODEL_NAME})...")
-    response = _call_with_retry(client, [PROMPT, image_part], config)
+    target_model = model_name or MODEL_NAME
+    print(f"[SCAN] Sending image to Gemini API (model: {target_model})...")
+    response = _call_with_retry(client, [PROMPT, image_part], config, model_name=target_model)
     print("[SCAN] Gemini response received.")
     return extract_json(response.text)
 
 
-def modify_topology(instruction: str, current_gns3: dict) -> dict:
+def modify_topology(instruction: str, current_gns3: dict, model_name: str = None) -> dict:
     """Modify an existing GNS3 topology JSON based on a text instruction."""
     client = _get_client()
 
@@ -182,7 +184,8 @@ def modify_topology(instruction: str, current_gns3: dict) -> dict:
         max_output_tokens=8192,
     )
 
-    print(f"[AI MODIFY] Instruction: {instruction} (model: {MODEL_NAME})")
-    response = _call_with_retry(client, prompt, config)
+    target_model = model_name or MODEL_NAME
+    print(f"[AI MODIFY] Instruction: {instruction} (model: {target_model})")
+    response = _call_with_retry(client, prompt, config, model_name=target_model)
     print("[AI MODIFY] Gemini response received.")
     return extract_json(response.text)

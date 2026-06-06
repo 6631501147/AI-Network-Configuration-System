@@ -22,6 +22,8 @@ except ImportError as _ie:
     def build_gns3(*a, **kw):      raise RuntimeError(f"ai_scanner import failed: {_ie}")
     def modify_topology(*a, **kw): raise RuntimeError(f"ai_scanner import failed: {_ie}")
 
+from urllib.parse import parse_qs, urlparse
+
 # ── Optional MySQL + bcrypt (graceful fallback if not installed) ──────────────
 try:
     import pymysql
@@ -353,7 +355,11 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self._json(500, {"ok": False, "error": f"Failed to parse request: {e}"}); return
 
         try:
-            topology_json = analyze_image(image_bytes, mime_type)
+            # Parse ?model= param if provided
+            query = parse_qs(urlparse(self.path).query)
+            model_param = query.get('model', [None])[0]
+
+            topology_json = analyze_image(image_bytes, mime_type, model_name=model_param)
             gns3_project  = build_gns3(topology_json)
             scanned_file  = os.path.join(TOPOLOGY_DIR, 'scanned.gns3')
             os.makedirs(TOPOLOGY_DIR, exist_ok=True)
@@ -387,7 +393,12 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self._json(400, {"ok": False, "error": "No instruction provided"}); return
             if not current_gns3:
                 self._json(400, {"ok": False, "error": "No current topology provided."}); return
-            modified      = modify_topology(instruction, current_gns3)
+
+            # Parse ?model= param if provided
+            query = parse_qs(urlparse(self.path).query)
+            model_param = query.get('model', [None])[0]
+
+            modified      = modify_topology(instruction, current_gns3, model_name=model_param)
             modified_file = os.path.join(TOPOLOGY_DIR, 'modified.gns3')
             os.makedirs(TOPOLOGY_DIR, exist_ok=True)
             with open(modified_file, 'w', encoding='utf-8') as f:
