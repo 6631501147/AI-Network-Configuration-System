@@ -1,0 +1,68 @@
+stages: [build, deploy]
+
+variables:
+  HARBOR_HOST: "hub-registry.mfu.ac.th"
+  PROJECT_SLUG: "ai-based-automatic-network-configuration-system"
+  BACKEND_IMAGE: "$HARBOR_HOST/$PROJECT_SLUG/backend"
+  FRONTEND_IMAGE: "$HARBOR_HOST/$PROJECT_SLUG/frontend"
+  IMAGE_TAG: "$CI_COMMIT_SHORT_SHA"
+  DEPLOY_PATH: "/opt/service/ai-based-automatic-network-configuration-system"
+  DOCKER_HOST: "tcp://docker:2375"
+  DOCKER_TLS_CERTDIR: ""
+
+build-and-push:
+  stage: build
+  image: docker:27.5.1-cli
+  services:
+    - name: docker:27.5.1-dind
+      command: ["--tls=false"]
+  before_script:
+    - echo "$HARBOR_PASSWORD" | docker login "$HARBOR_HOST" -u "$HARBOR_USERNAME" --password-stdin
+    - docker pull "$BACKEND_IMAGE:latest" || true
+    - docker pull "$FRONTEND_IMAGE:latest" || true
+  script:
+    - docker build --pull --cache-from "$BACKEND_IMAGE:latest" -f backend-node/Dockerfile -t "$BACKEND_IMAGE:$IMAGE_TAG" -t "$BACKEND_IMAGE:latest" backend-node
+    - >
+      docker build --pull --cache-from "$FRONTEND_IMAGE:latest" -f frontend-vue/Dockerfile --target server-runner
+      --build-arg VUE_APP_API_BASE_URL="${VUE_APP_API_BASE_URL:-/}"
+      --build-arg VUE_APP_SOCKET_URL="${VUE_APP_SOCKET_URL:-same-origin}"
+      --build-arg VUE_APP_CLIENTID="${GOOGLE_CLIENT_ID:-}"
+      --build-arg VUE_APP_SCOPE="${GOOGLE_OAUTH_SCOPE:-profile email}"
+      --build-arg VUE_APP_PROMPT="${GOOGLE_OAUTH_PROMPT:-select_account}"
+      --build-arg VUE_APP_AUTH_SYSTEM="${FRONTEND_AUTH_SYSTEM:-ai-based-automatic-network-configuration-system}"
+      --build-arg VUE_APP_PROJECT_APP_ID="${FRONTEND_PROJECT_APP_ID:-ai-based-automatic-network-configuration-system}"
+      --build-arg VUE_APP_PROJECT_PERMISSION_ROOT_PATH="${FRONTEND_PROJECT_PERMISSION_ROOT_PATH:-/ai-based-automatic-network-configuration-system/security/permission}"
+      -t "$FRONTEND_IMAGE:$IMAGE_TAG" -t "$FRONTEND_IMAGE:latest" frontend-vue
+    - docker push "$BACKEND_IMAGE:$IMAGE_TAG"
+    - docker push "$BACKEND_IMAGE:latest"
+    - docker push "$FRONTEND_IMAGE:$IMAGE_TAG"
+    - docker push "$FRONTEND_IMAGE:latest"
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main" && $HARBOR_USERNAME && $HARBOR_PASSWORD'
+
+deploy-production:
+  stage: deploy
+  image: alpine:3.21
+  needs: [build-and-push]
+  environment:
+    name: production
+  before_script:
+    - apk add --no-cache openssh-client sshpass
+    - mkdir -p ~/.ssh
+    - ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts
+    - export SSHPASS="$DEPLOY_PASSWORD"
+  script:
+    - sshpass -e ssh "$DEPLOY_USER@$DEPLOY_HOST" "mkdir -p '$DEPLOY_PATH'"
+    - sshpass -e scp docker-compose.gitlab.yml "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/docker-compose.gitlab.yml"
+    - |
+      printf '%s\n' "$SUDO_PASSWORD" | sshpass -e ssh "$DEPLOY_USER@$DEPLOY_HOST" "
+        sudo -S -p '' sh -c '
+          printf \"%s\n\" \"\$1\" | docker login \"\$2\" -u \"\$3\" --password-stdin &&
+          cd \"\$4\" &&
+          env IMAGE_TAG=\"\$5\" HARBOR_HOST=\"\$2\" PULL_POLICY=always docker compose --env-file .env.prod -f docker-compose.gitlab.yml pull &&
+          env IMAGE_TAG=\"\$5\" HARBOR_HOST=\"\$2\" PULL_POLICY=always docker compose --env-file .env.prod -f docker-compose.gitlab.yml up -d --wait &&
+          env IMAGE_TAG=\"\$5\" HARBOR_HOST=\"\$2\" PULL_POLICY=always docker compose --env-file .env.prod -f docker-compose.gitlab.yml ps
+        ' sh '$HARBOR_PASSWORD' '$HARBOR_HOST' '$HARBOR_USERNAME' '$DEPLOY_PATH' '$IMAGE_TAG'
+      "
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main" && $HARBOR_USERNAME && $HARBOR_PASSWORD && $DEPLOY_HOST && $DEPLOY_USER && $DEPLOY_PASSWORD && $SUDO_PASSWORD'

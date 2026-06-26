@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tasklist: AI Based Automatic Network Configuration System System Progress And Readiness</title>
+  <style>
+    :root { color-scheme: light; --bg: #f5f1e8; --surface: rgba(255, 252, 244, 0.92); --text: #18211f; --muted: #66746f; --line: rgba(29, 48, 42, 0.16); --accent: #153d35; --accent-2: #61764b; --accent-3: #b76545; --done: #0f7b46; --ready: #1f6feb; --progress: #946200; --blocked: #b42318; --pending: #6b7280; --warning: #a15c00; --shadow: 0 18px 48px rgba(24, 33, 31, 0.12); }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: linear-gradient(135deg, #f8f3e6 0%, #ece3d0 52%, #e8dac3 100%); color: var(--text); font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; line-height: 1.5; min-height: 100vh; }
+    main { width: min(1440px, calc(100% - 32px)); margin: 0 auto; padding: 28px 0 48px; }
+    .hero { border: 1px solid rgba(21, 61, 53, 0.18); background: linear-gradient(110deg, rgba(21, 61, 53, 0.97), rgba(39, 76, 66, 0.92) 56%, rgba(183, 101, 69, 0.9)); border-radius: 14px; color: #fffaf0; box-shadow: var(--shadow); padding: clamp(10px, 1.7vw, 18px); margin-bottom: 10px; }
+    .eyebrow { display: inline-flex; align-items: center; gap: 7px; margin: 0 0 6px; padding: 3px 8px; border: 1px solid rgba(255, 250, 240, 0.24); border-radius: 999px; background: rgba(255, 250, 240, 0.08); color: #f7dfaf; font-size: 10px; text-transform: uppercase; }
+    h1 { max-width: 940px; margin: 0; font-size: clamp(20px, 2.4vw, 30px); line-height: 1.08; letter-spacing: 0; }
+    .metrics { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin: 14px 0; }
+    .metric { min-height: 108px; padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); box-shadow: 0 14px 36px rgba(24, 33, 31, 0.08); }
+    .metric .label { color: var(--muted); font-size: 12px; text-transform: uppercase; }
+    .metric .value { margin-top: 12px; font-size: clamp(28px, 4vw, 48px); line-height: 1; color: var(--accent); }
+    .metric .note { margin-top: 10px; color: var(--muted); font-size: 13px; }
+    .content { display: grid; gap: 18px; }
+    .summary-board { margin: 18px 0; }
+    .summary-board .table-wrap { margin-bottom: 0; }
+    .task-board { margin: 18px 0; padding: clamp(18px, 3vw, 28px); border: 1px solid var(--line); border-radius: 16px; background: var(--surface); box-shadow: 0 14px 36px rgba(24, 33, 31, 0.08); }
+    .section-head { display: flex; justify-content: space-between; gap: 18px; align-items: flex-end; margin-bottom: 16px; }
+    .subcopy { margin: 8px 0 0; color: var(--muted); line-height: 1.55; }
+    .board-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 16px; }
+    .board-panel { display: none; }
+    .board-panel.active { display: block; }
+    .board-section-title { margin: 2px 0 12px; }
+    .board-section-title h3 { margin-top: 0; }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+    .filters { display: flex; flex-wrap: wrap; gap: 8px; }
+    button { display: inline-flex; align-items: center; gap: 7px; border: 1px solid rgba(21, 61, 53, 0.18); border-radius: 999px; padding: 9px 13px; background: rgba(255, 252, 244, 0.9); color: var(--accent); cursor: pointer; font: 800 13px Inter, ui-sans-serif, system-ui, sans-serif; transition: background 160ms ease, color 160ms ease, transform 160ms ease; }
+    button:hover, button.active { transform: translateY(-1px); background: var(--accent); color: #fffaf0; }
+    #visible-count { color: var(--muted); font-size: 14px; }
+    h2 { margin: 22px 0 10px; color: var(--accent); font-size: clamp(24px, 3vw, 38px); line-height: 1.1; letter-spacing: 0; }
+    h3 { margin: 18px 0 8px; color: var(--accent); font-size: 18px; letter-spacing: 0; }
+    p { margin: 10px 0 14px; color: var(--text); }
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.92em; background: rgba(21, 61, 53, 0.08); border: 1px solid rgba(21, 61, 53, 0.12); border-radius: 5px; padding: 1px 5px; }
+    .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); box-shadow: 0 14px 36px rgba(24, 33, 31, 0.06); margin: 10px 0 20px; }
+    table { width: 100%; border-collapse: collapse; min-width: 920px; }
+    .task-table { min-width: 1060px; }
+    .task-table th:first-child, .task-table td:first-child { width: 150px; min-width: 150px; white-space: nowrap; }
+    th, td { padding: 11px 13px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; font-size: 14px; }
+    th { position: sticky; top: 0; z-index: 1; background: #efe5d0; color: var(--accent); font-weight: 800; white-space: nowrap; text-transform: uppercase; font-size: 11px; }
+    tr:last-child td { border-bottom: 0; }
+    tr:hover td { background: rgba(217, 155, 53, 0.07); }
+    td.progress-cell { min-width: 132px; }
+    .progress-number { display: inline-block; min-width: 42px; font-weight: 800; color: var(--accent); }
+    .progress-meter { display: inline-block; width: 76px; height: 8px; border-radius: 999px; overflow: hidden; background: rgba(21, 61, 53, 0.12); vertical-align: middle; margin-left: 8px; }
+    .progress-meter span { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-2), #d99b35); }
+    .status-cell span, .status-badge { display: inline-flex; align-items: center; min-height: 24px; padding: 3px 9px; border-radius: 999px; font-weight: 800; font-size: 12px; border: 1px solid currentColor; }
+    .status-done span { color: var(--done); background: #e9f7ef; }
+    .status-ready span { color: var(--ready); background: #eef5ff; }
+    .status-progress span { color: var(--progress); background: #fff7e6; }
+    .status-blocked span { color: var(--blocked); background: #fff0ed; }
+    .status-pending span, .status-muted span { color: var(--pending); background: #f3f4f6; }
+    .status-warning span { color: var(--warning); background: #fff4e5; }
+    .status-badge.status-blocked { color: var(--blocked); background: #fff0ed; }
+    .status-badge.status-done { color: var(--done); background: #e9f7ef; }
+    .status-badge.status-progress { color: var(--progress); background: #fff7e6; }
+    .status-badge.status-pending { color: var(--pending); background: #f3f4f6; }
+    .badge { display: inline-flex; align-items: center; justify-content: center; padding: 4px 9px; border-radius: 999px; font-size: 12px; font-weight: 800; white-space: nowrap; }
+    .badge.done { color: var(--done); background: #e9f7ef; }
+    .badge.verifying { color: #5b4b00; background: #fff6cc; }
+    .badge.progress, .badge.discovery, .badge.in_progress, .badge.docs_prd { color: var(--progress); background: #fff7e6; }
+    .badge.pending { color: var(--pending); background: #f3f4f6; }
+    .badge.blocked, .badge.blocker { color: var(--blocked); background: #fff0ed; }
+    .small-progress { display: grid; gap: 6px; min-width: 86px; }
+    .small-progress strong { color: var(--accent); }
+    .track { position: relative; overflow: hidden; height: 8px; border-radius: 999px; background: rgba(21, 61, 53, 0.12); }
+    .fill { position: absolute; inset: 0 auto 0 0; border-radius: inherit; background: linear-gradient(90deg, var(--accent), var(--accent-2), #d99b35); }
+    ul { margin: 8px 0 16px 22px; padding: 0; }
+    li { margin: 5px 0; }
+    @media (max-width: 980px) { .metrics { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 720px) { main { width: min(100% - 20px, 1440px); padding: 14px 0 28px; } .hero, .metric, .table-wrap { border-radius: 12px; } .hero { padding: 12px; } .metrics { grid-template-columns: 1fr; } h1 { font-size: 22px; } table { min-width: 760px; } th, td { font-size: 13px; padding: 9px 10px; } }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="hero">
+      <div class="eyebrow">Progress Dashboard</div>
+      <h1>Tasklist: AI Based Automatic Network Configuration System System Progress And Readiness</h1>
+    </section>
+    <section class="metrics">
+      <div class="metric"><div class="label">Done</div><div class="value">0</div><div class="note">Completed task rows</div></div>
+      <div class="metric"><div class="label">Blocked</div><div class="value">0</div><div class="note">Rows needing action</div></div>
+      <div class="metric"><div class="label">Verifying</div><div class="value">0</div><div class="note">Rows under validation</div></div>
+      <div class="metric"><div class="label">In Progress</div><div class="value">0</div><div class="note">Discovery or active work</div></div>
+      <div class="metric"><div class="label">Pending</div><div class="value">4</div><div class="note">Not started rows</div></div>
+    </section>
+    <section class="summary-board" aria-label="Summary">
+<div class="table-wrap">
+<table>
+<thead><tr><th>Field</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>Date</td><td>2026-06-18</td></tr>
+<tr><td>Project</td><td>AI Based Automatic Network Configuration System</td></tr>
+<tr><td>Module / Feature</td><td>system progress and readiness</td></tr>
+<tr><td>Requirement</td><td>Track actual project system progress from source and verification evidence</td></tr>
+<tr><td>Active Change Record</td><td><code>docs/changes/2026-06-18-&lt;project-code&gt;-tasklist-progress.md</code></td></tr>
+<tr><td>Overall Status</td><td class="status-cell status-pending"><span>pending</span></td></tr>
+<tr><td>Overall Progress</td><td class="progress-cell"><span class="progress-number">0%</span><span class="progress-meter"><span style="width: 0%"></span></span></td></tr>
+<tr><td>Progress Type</td><td>Evidence-backed readiness score, not final product completion</td></tr>
+</tbody>
+</table>
+</div>
+    </section>
+    <section class="task-board" aria-label="Task Board">
+      <div class="section-head">
+        <div>
+          <h2>Task Board</h2>
+          <p class="subcopy">T1-T5 data is rendered inside this board. T3 keeps task filters; T5 keeps the blocker and risk register.</p>
+        </div>
+      </div>
+      <div class="board-tabs" aria-label="Task Board sections">
+        <button type="button" data-board-tab="t1">T1 Evidence</button>
+        <button type="button" data-board-tab="t2">T2 Progress</button>
+        <button type="button" class="active" data-board-tab="t3">T3 Tasks</button>
+        <button type="button" data-board-tab="t4">T4 Verification</button>
+        <button type="button" data-board-tab="t5">T5 Blockers/Risks</button>
+      </div>
+      <div class="board-panel" data-board-panel="t1">
+        <div class="board-section-title">
+          <h3>T1. Source Evidence</h3>
+        </div>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Area</th><th>Source Evidence</th></tr></thead>
+<tbody>
+<tr><td>API mount points</td><td><code>backend-node/server/routes/app.routes.js</code></td></tr>
+<tr><td>Backend scripts</td><td><code>backend-node/package.json</code></td></tr>
+<tr><td>Frontend routes</td><td><code>frontend-vue/src/router/index.js</code></td></tr>
+<tr><td>Frontend API client</td><td><code>frontend-vue/src/service/api.js</code></td></tr>
+<tr><td>Docs control</td><td><code>docs/AI-WORKFLOW.md</code>, <code>docs/AI-DOCS-INDEX.md</code>, <code>docs/tasks/README.md</code>, <code>docs/templates/T1-T20-change-document.md</code></td></tr>
+<tr><td>Module docs</td><td><code>docs/modules/*</code> when present</td></tr>
+<tr><td>Environment config</td><td>static key check only; do not document secret values</td></tr>
+</tbody>
+</table>
+</div>
+      </div>
+      <div class="board-panel" data-board-panel="t2">
+        <div class="board-section-title">
+          <h3>T2. Progress Calculation</h3>
+        </div>
+<p>Adjust weights per project, but keep them evidence-backed.</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Readiness Area</th><th>Weight</th><th>Earned</th><th>Basis</th></tr></thead>
+<tbody>
+<tr><td>Backend API/services verified</td><td>35</td><td>0</td><td>Not verified yet.</td></tr>
+<tr><td>Integration/auth verified</td><td>15</td><td>0</td><td>Not verified yet.</td></tr>
+<tr><td>Frontend route/API mapped</td><td>20</td><td>0</td><td>Not verified yet.</td></tr>
+<tr><td>Environment/static config checked</td><td>10</td><td>0</td><td>Not verified yet.</td></tr>
+<tr><td>Release verification</td><td>15</td><td>0</td><td>Not verified yet.</td></tr>
+<tr><td>Tasklist and handoff</td><td>5</td><td>0</td><td>Not created yet.</td></tr>
+<tr><td><strong>Total</strong></td><td><strong>100</strong></td><td><strong>0</strong></td><td>Overall status remains pending.</td></tr>
+</tbody>
+</table>
+</div>
+      </div>
+      <div class="board-panel active" data-board-panel="t3">
+        <div class="board-section-title">
+          <h3>T3. Active Tasklist</h3>
+          <p class="subcopy">4 task rows. Use task filters for task status; blocker details are in the T5 tab.</p>
+        </div>
+      <div class="toolbar">
+        <div class="filters task-filters" aria-label="Task filters">
+          <button type="button" class="active" data-task-filter="all">All</button>
+          <button type="button" data-task-filter="done">Done</button>
+          <button type="button" data-task-filter="verifying">Verifying</button>
+          <button type="button" data-task-filter="in_progress">In progress</button>
+          <button type="button" data-task-filter="pending">Pending</button>
+          <button type="button" data-task-filter="blocked">Tasks with blocker</button>
+        </div>
+        <span id="visible-count">Showing 4 tasks</span>
+      </div>
+      <div class="table-wrap">
+        <table class="task-table">
+          <thead><tr><th>Task ID</th><th>Task</th><th>Agent / Owner</th><th>Status</th><th>Progress</th><th>Blocker</th><th>Next Action</th><th>Output / Evidence</th></tr></thead>
+          <tbody id="task-body">
+            <tr data-status="pending" data-blocked="false"><td>ai-based-automatic-network-configuration-system-SYS-001</td><td>Map API surface</td><td>Orchestrator</td><td><span class="badge pending">pending</span></td><td><div class="small-progress"><strong>0%</strong><div class="track"><div class="fill" style="width:0%"></div></div></div></td><td>none</td><td>read route truth</td><td>source map</td></tr>
+            <tr data-status="pending" data-blocked="false"><td>ai-based-automatic-network-configuration-system-SYS-002</td><td>Verify backend readiness</td><td>Backend</td><td><span class="badge pending">pending</span></td><td><div class="small-progress"><strong>0%</strong><div class="track"><div class="fill" style="width:0%"></div></div></div></td><td>none</td><td>run backend tests</td><td>backend readiness evidence</td></tr>
+            <tr data-status="pending" data-blocked="false"><td>ai-based-automatic-network-configuration-system-SYS-003</td><td>Verify frontend readiness</td><td>Frontend</td><td><span class="badge pending">pending</span></td><td><div class="small-progress"><strong>0%</strong><div class="track"><div class="fill" style="width:0%"></div></div></div></td><td>none</td><td>run frontend verification</td><td>frontend readiness evidence</td></tr>
+            <tr data-status="pending" data-blocked="false"><td>ai-based-automatic-network-configuration-system-SYS-004</td><td>Verify release readiness</td><td>Release/Ops</td><td><span class="badge pending">pending</span></td><td><div class="small-progress"><strong>0%</strong><div class="track"><div class="fill" style="width:0%"></div></div></div></td><td>none</td><td>run smoke/e2e</td><td>release readiness evidence</td></tr>
+          </tbody>
+        </table>
+      </div>
+      </div>
+      <div class="board-panel" data-board-panel="t4">
+        <div class="board-section-title">
+          <h3>T4. Verification Log</h3>
+        </div>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Command / Check</th><th>Result</th><th>Evidence</th></tr></thead>
+<tbody>
+<tr><td>backend test</td><td class="status-cell status-muted"><span>not run</span></td><td></td></tr>
+<tr><td>frontend lint/test/build</td><td class="status-cell status-muted"><span>not run</span></td><td></td></tr>
+<tr><td>live smoke/e2e</td><td class="status-cell status-muted"><span>not run</span></td><td></td></tr>
+</tbody>
+</table>
+</div>
+      </div>
+      <div class="board-panel" data-board-panel="t5">
+        <div class="board-section-title">
+          <h3>T5. Blockers And Risks</h3>
+        </div>
+<div class="table-wrap">
+<table>
+<thead><tr><th>ID</th><th>Type</th><th>Status</th><th>Evidence</th><th>Impact</th><th>Next Action</th></tr></thead>
+<tbody>
+<tr><td>B-001</td><td>blocker</td><td class="status-cell status-blocked"><span>open</span></td><td></td><td></td><td></td></tr>
+<tr><td>R-001</td><td>risk</td><td class="status-cell status-blocked"><span>open</span></td><td></td><td></td><td></td></tr>
+</tbody>
+</table>
+</div>
+      </div>
+    </section>
+    <section class="content">
+<h2 id="t6-decision">T6. Decision</h2>
+<p>Current project progress is not known until source discovery and verification are completed.</p>
+    </section>
+  </main>
+  <script>
+    const boardButtons = Array.from(document.querySelectorAll("[data-board-tab]"));
+    const boardPanels = Array.from(document.querySelectorAll("[data-board-panel]"));
+    const taskButtons = Array.from(document.querySelectorAll("[data-task-filter]"));
+    const rows = Array.from(document.querySelectorAll("#task-body tr"));
+    const visibleCount = document.getElementById("visible-count");
+    function activateBoardTab(tab) {
+      boardButtons.forEach(function (button) { button.classList.toggle("active", button.dataset.boardTab === tab); });
+      boardPanels.forEach(function (panel) { panel.classList.toggle("active", panel.dataset.boardPanel === tab); });
+    }
+    function applyFilter(filter) {
+      let visible = 0;
+      rows.forEach(function (row) {
+        const status = row.dataset.status;
+        const blocked = row.dataset.blocked === "true";
+        const show = filter === "all" || status === filter || (filter === "blocked" && blocked);
+        row.style.display = show ? "" : "none";
+        if (show) visible += 1;
+      });
+      if (visibleCount) visibleCount.textContent = "Showing " + visible + " task" + (visible === 1 ? "" : "s");
+    }
+    boardButtons.forEach(function (button) {
+      button.addEventListener("click", function () {
+        activateBoardTab(button.dataset.boardTab);
+      });
+    });
+    taskButtons.forEach(function (button) {
+      button.addEventListener("click", function () {
+        taskButtons.forEach(function (item) { item.classList.remove("active"); });
+        button.classList.add("active");
+        applyFilter(button.dataset.taskFilter);
+      });
+    });
+  </script>
+</body>
+</html>

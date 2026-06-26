@@ -1,0 +1,55 @@
+name: ai-based-automatic-network-configuration-system
+
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    image: ${HARBOR_HOST:-hub-registry.mfu.ac.th}/ai-based-automatic-network-configuration-system/backend:${IMAGE_TAG:-latest}
+    pull_policy: ${PULL_POLICY:-always}
+    restart: unless-stopped
+    env_file:
+      - ${BACKEND_ENV_FILE:-./backend-node/.env.prod}
+    environment:
+      NODE_ENV: ${BACKEND_NODE_ENV:-production}
+      PORT: 8082
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    ports:
+      - "${BACKEND_BIND_IP:-127.0.0.1}:${BACKEND_PORT:-8215}:8082"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:8082/healthz >/dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  frontend:
+    image: ${HARBOR_HOST:-hub-registry.mfu.ac.th}/ai-based-automatic-network-configuration-system/frontend:${IMAGE_TAG:-latest}
+    pull_policy: ${PULL_POLICY:-always}
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${FRONTEND_BIND_IP:-127.0.0.1}:${FRONTEND_PORT:-8315}:80"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1/ >/dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  redis-data:
