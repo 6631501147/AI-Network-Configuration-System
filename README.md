@@ -1,10 +1,17 @@
 # AI-Based Automatic Network Configuration System
 
-An intelligent network automation system that automatically configures routers and PCs in a GNS3 simulated enterprise network using Python, Netmiko, and AI (Google Gemini).
+AIBasedAutomaticNetworkConfigurationSystem is an IAM-integrated system for MFU that combines an intelligent network automation engine with a full-stack web application. It includes:
+
+- **AI Network Automation** — Automatically configures routers and PCs in GNS3 using Python, Netmiko, and Google Gemini.
+- **Backend API** — Node.js backend for AIBasedAutomaticNetworkConfigurationSystem registry records.
+- **Vue Frontend** — Dashboard, AIBasedAutomaticNetworkConfigurationSystem registry, account directory, settings, and permission management.
+- **IAM Authentication** — Delegated authentication and permission filtering.
+- **Docker Compose** — Local/server deployment files.
+- **GitLab CI** — GitLab deploy compose templates for Harbor-based delivery.
 
 ---
 
-## 🚀 Features
+## 🚀 AI Automation Features
 
 | Feature | Description |
 |---|---|
@@ -20,111 +27,59 @@ An intelligent network automation system that automatically configures routers a
 
 ---
 
-## 📁 Project Structure
+## ⚙️ Runtime Ports
 
-```
-AI-Network-Configuration-System/
-├── configure.py              # Entry point: runs full auto-config
-├── start_dashboard.py        # Entry point: starts web dashboard
-├── parse_topo.py             # Utility: parse and print .gns3 topology info
-├── requirements.txt          # Python dependencies
-├── .env                      # API keys (GEMINI_API_KEY)
-├── .gitignore
-│
-├── scripts/
-│   ├── __init__.py
-│   ├── router_automation.py  # Core: router + VPCS + OSPF + ping + report
-│   ├── logger.py             # Activity logging → logs/activity.log
-│   └── ai_scanner/
-│       ├── __init__.py
-│       ├── gemini_vision.py  # Gemini Vision: image → topology JSON
-│       └── gns3_builder.py   # Build .gns3 project file from topology JSON
-│
-├── topology/                 # GNS3 topology files (.gns3)
-│   ├── KOTHANT.gns3          # Main enterprise topology
-│   ├── scanned.gns3          # AI-generated from image scan
-│   ├── modified.gns3         # AI-modified topology
-│   └── manual.gns3           # Manually saved from dashboard
-│
-├── results/                  # Auto-config reports
-│   ├── auto_config_report.txt
-│   ├── ospf_neighbors.txt
-│   └── ping_test.txt
-│
-├── logs/                     # Activity logs (Security requirement)
-│   └── activity.log          # Written at runtime
-│
-├── screenshots/              # Topology screenshots for AI scanning
-│
-├── dashboard.html            # Web dashboard UI
-├── dashboard.css             # Dashboard styles
-├── dashboard.js              # Dashboard logic
-│
-└── docs/
-    ├── PRD.md
-    ├── project_overview.md
-    ├── system_workflow.md
-    ├── installation_guide.md
-    ├── topology_description.md
-    ├── commandpromt.md
-    └── future_improvements.md
-```
+- Backend host port: `8095`
+- Frontend host port: `8084`
+- Production domain: `https://ai-based-automatic-network-configuration-system.mfu.ac.th`
 
 ---
 
-## ⚙️ Installation
+## 🐳 Local Run (Docker)
 
-### 1. Prerequisites
+```bash
+docker compose --env-file .env.local up -d --build
+```
+
+Open `http://127.0.0.1:8084`.
+
+## Server Run
+
+```bash
+APP_ENV=prod ./server.sh deploy
+```
+
+The server compose binds backend and frontend to `127.0.0.1` by default so Nginx can publish the public domain.
+
+---
+
+## 🖥️ AI Automation Usage
+
+### Prerequisites
 - Python 3.8+
 - GNS3 (with VM running)
 - Cisco IOS image loaded in GNS3
-- Google Gemini API key (for AI features)
+- Google Gemini API key
 
-### 2. Install Dependencies
+### Install Python Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 3. Configure Environment
-
-Edit `.env`:
-```
-GEMINI_API_KEY=your_gemini_api_key_here
-```
-
----
-
-## ▶️ Usage
-
 ### Option A — Full Auto-Configuration (CLI)
-
-Automatically configures all routers and PCs in your GNS3 topology via Telnet.
 
 ```bash
 python configure.py
 ```
 
-- Configures all routers (interfaces, IP, OSPF)
-- Configures all PCs (IP/gateway)
-- Waits for OSPF convergence
-- Runs ping verification tests
-- Saves report to `results/auto_config_report.txt`
-- Logs all activity to `logs/activity.log`
-
-### Option B — Web Dashboard (GUI)
+### Option B — AI Web Dashboard
 
 ```bash
 python start_dashboard.py
 ```
 
-Opens `http://localhost:8000/dashboard.html` in your browser.
-
-Dashboard features:
-- **View** topology files (`.gns3`)
-- **Upload** a topology screenshot → AI scans and generates `scanned.gns3`
-- **Modify** topology via text instructions → AI edits and saves `modified.gns3`
-- **Manual topology builder** → saves `manual.gns3`
+Opens `http://localhost:8000/dashboard.html`.
 
 ---
 
@@ -144,15 +99,23 @@ Routing Protocol: **OSPF Area 0**
 
 ---
 
-## ✅ Verification
+## 🔧 Backend Scripts
 
-After running `configure.py`, verify on the router CLI:
+Run inside `backend-node`:
 
-```
-show ip ospf neighbor
-show ip interface brief
-ping <destination-ip>
-```
+- `npm run start:local`
+- `npm run test:contracts`
+- `npm run register:iam:local`
+- `npm run bootstrap:local`
+- `npm run bootstrap`
+- `npm run reset:permissions`
+- `npm run smoke:live:user`
+
+---
+
+## ⚠️ Important
+
+Real env files are present in this workspace and ignored by git. Do not commit secrets. Register the AIBasedAutomaticNetworkConfigurationSystem IAM managed client before production login is expected to work end-to-end. Set `PROJECT_PERMISSION_ACCOUNT_EMAIL` or `PROJECT_PERMISSION_ACCOUNT_ID` before running bootstrap.
 
 ---
 
@@ -160,16 +123,11 @@ ping <destination-ip>
 
 | Technology | Purpose |
 |---|---|
-| Python | Automation scripting |
+| Node.js | Backend API |
+| Vue.js | Frontend SPA |
+| Python | Network automation scripting |
 | GNS3 | Network simulation |
 | Netmiko | Router automation via Telnet |
-| Paramiko | SSH communication |
 | Google Gemini | AI topology analysis |
-| python-dotenv | Environment variable management |
-| Cisco IOS | Router operating system |
-
----
-
-## 📄 License
-
-See [LICENSE](LICENSE)
+| Docker | Containerized deployment |
+| GitLab CI | Continuous delivery pipeline |
