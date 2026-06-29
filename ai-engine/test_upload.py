@@ -9,7 +9,7 @@ body = (
     'Content-Type: image/gif\r\n\r\n'
 ).encode() + dummy_image + ('\r\n--' + boundary + '--\r\n').encode()
 
-req = urllib.request.Request('http://localhost:8000/api/scan-image', data=body, headers={
+req = urllib.request.Request('http://localhost:8000/ai-api/scan-image', data=body, headers={
     'Content-Type': 'multipart/form-data; boundary=' + boundary,
     'Content-Length': str(len(body))
 })

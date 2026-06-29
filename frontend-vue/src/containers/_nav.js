@@ -12,6 +12,13 @@ export default function buildNav (t) {
         },
         {
           _name: 'CSidebarNavItem',
+          name: 'AI Engine Dashboard',
+          href: '/ai-engine/dashboard.html',
+          icon: 'cil-chart-pie',
+          permission: { path: '/dashboard', action: 'view' }
+        },
+        {
+          _name: 'CSidebarNavItem',
           name: t('nav.aibasedautomaticnetworkconfigurationsystemRegistry'),
           to: '/ai-based-automatic-network-configuration-system/registry',
           icon: 'cil-description',

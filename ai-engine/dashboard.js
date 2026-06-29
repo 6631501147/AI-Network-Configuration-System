@@ -1,21 +1,6 @@
 // ==========================================
 // GLOBAL STATE
 // ==========================================
-
-// Gemini model fallback order (matches dropdown)
-const GEMINI_FALLBACK_MODELS = [
-    'gemini-2.0-flash',
-    'gemini-2.5-flash-preview-05-20',
-    'gemini-2.5-pro-preview-06-05',
-    'gemini-3.0-flash',
-    'gemini-3.5-pro',
-];
-
-function getSelectedModel() {
-    const sel = document.getElementById('gemini-model-select');
-    return sel ? sel.value : 'gemini-2.5-flash-preview-05-20';
-}
-
 document.addEventListener('DOMContentLoaded', () => {
     populateTopologies();
     fetchTopology();
@@ -845,7 +830,7 @@ function setupControls() {
 // ==========================================
 async function populateTopologies(autoSelect = null) {
     try {
-        const res = await fetch('/api/topologies');
+        const res = await fetch('/ai-api/topologies');
         const json = await res.json();
         if (!json.ok) return;
         
@@ -904,7 +889,7 @@ async function scanImage(file) {
     formData.append('file', file);
     
     try {
-        const res = await fetch('/api/scan-image', {
+        const res = await fetch('/ai-api/scan-image', {
             method: 'POST',
             body: formData
         });
@@ -979,7 +964,7 @@ async function saveConfig() {
 
     try {
         showSaveStatus('saving');
-        const res = await fetch('/api/save-manual', {
+        const res = await fetch('/ai-api/save-manual', {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
             body:    JSON.stringify(payload)
@@ -1005,7 +990,7 @@ async function saveConfig() {
 async function restoreDefault() {
     if (!confirm('Reset to KOTHANT.gns3 default?\nThis will clear all manual connections and dragged positions.')) return;
     try {
-        await fetch('/api/delete-manual', { method:'POST', headers:{'Content-Type':'application/json'}, body:'{}' });
+        await fetch('/ai-api/delete-manual', { method:'POST', headers:{'Content-Type':'application/json'}, body:'{}' });
     } catch (_) { /* server may not have the file */ }
 
     // Wipe manual state
@@ -1161,20 +1146,6 @@ function initChatbot() {
     textInput?.addEventListener('keydown', e => {
         if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendTextMessage(); }
     });
-
-    // Model selector — show current model name in status
-    const modelSel = document.getElementById('gemini-model-select');
-    if (modelSel) {
-        modelSel.addEventListener('change', () => {
-            const label = modelSel.options[modelSel.selectedIndex]?.text || 'AI';
-            const statusTxt = document.getElementById('chatbot-status-text');
-            if (statusTxt && !chatBusy) statusTxt.textContent = `Model: ${label}`;
-            setTimeout(() => {
-                const s = document.getElementById('chatbot-status-text');
-                if (s && !chatBusy) s.textContent = 'Network Assistant';
-            }, 2500);
-        });
-    }
 
     // Init lucide icons inside widget
     const panel = document.getElementById('chatbot-panel');
@@ -1387,7 +1358,7 @@ function runTopologyFromChat(gns3Data, runBtn) {
 }
 
 
-// -- Image upload (with model auto-fallback) --
+// -- Image upload -------------------------
 async function handleChatImageUpload(file) {
     if (chatBusy) return;
     if (file.size > 10 * 1024 * 1024) {
@@ -1406,55 +1377,29 @@ async function handleChatImageUpload(file) {
         const formData = new FormData();
         formData.append('file', file);
 
-        // Build fallback list: selected model first, then rest
-        const chosen = getSelectedModel();
-        const trialOrder = [chosen, ...GEMINI_FALLBACK_MODELS.filter(m => m !== chosen)];
+        try {
+            const res  = await fetch('/ai-api/scan-image', { method: 'POST', body: formData });
+            const json = await res.json();
+            hideChatThinking();
 
-        let json = null;
-        let usedModel = chosen;
+            if (json.ok) {
+                const gns3Res = await fetch(json.file + '?t=' + Date.now());
+                if (!gns3Res.ok) throw new Error('Could not load generated .gns3 file.');
+                const gns3Data = await gns3Res.json();
+                gns3Data._chatLabel = 'scanned.gns3';
 
-        for (const model of trialOrder) {
-            try {
-                const res = await fetch(`/api/scan-image?model=${encodeURIComponent(model)}`,
-                    { method: 'POST', body: formData });
-                json = await res.json();
-
-                if (json.ok) { usedModel = model; break; }
-
-                // If 404 model-not-found, try next
-                const errStr = (json.error || '').toLowerCase();
-                const isModelMissing = errStr.includes('not found') || errStr.includes('404') || errStr.includes('not supported');
-                if (isModelMissing) {
-                    appendChatMessage('bot', 'text',
-                        `⚠️ Model **${model}** not available. Trying next…`);
-                    continue;
-                }
-                break; // real error, don't retry
-            } catch (err) {
-                json = { ok: false, error: err.message };
-                break;
+                currentGns3 = gns3Data;
+                appendChatMessage('bot', 'code', gns3Data, gns3Data);
+                await populateTopologies('scanned.gns3');
+            } else {
+                appendChatMessage('bot', 'error', `Scan failed: ${json.error}`);
             }
+        } catch (err) {
+            hideChatThinking();
+            appendChatMessage('bot', 'error', `Error: ${err.message}`);
+        } finally {
+            setChatBusy(false);
         }
-
-        hideChatThinking();
-
-        if (json && json.ok) {
-            // Update dropdown to the model that actually worked
-            const sel = document.getElementById('gemini-model-select');
-            if (sel) sel.value = usedModel;
-
-            const gns3Res = await fetch(json.file + '?t=' + Date.now());
-            if (!gns3Res.ok) throw new Error('Could not load generated .gns3 file.');
-            const gns3Data = await gns3Res.json();
-            gns3Data._chatLabel = 'scanned.gns3';
-
-            currentGns3 = gns3Data;
-            appendChatMessage('bot', 'code', gns3Data, gns3Data);
-            await populateTopologies('scanned.gns3');
-        } else {
-            appendChatMessage('bot', 'error', `Scan failed: ${json?.error || 'Unknown error'}`);
-        }
-        setChatBusy(false);
     };
     reader.readAsDataURL(file);
 }
@@ -1471,80 +1416,38 @@ async function sendTextMessage() {
 
     appendChatMessage('user', 'text', text);
 
-    // If no topology has been loaded via image scan, load the currently selected one
     if (!currentGns3) {
-        const sel = document.getElementById('topology-selector');
-        const selectedFile = sel ? sel.value : 'KOTHANT.gns3';
-        try {
-            const res = await fetch(`topology/${selectedFile}?t=${Date.now()}`);
-            if (res.ok) {
-                currentGns3 = await res.json();
-                appendChatMessage('bot', 'text', `Using current topology: **${selectedFile}**`);
-            } else {
-                appendChatMessage('bot', 'text', 'Could not load the current topology. Please upload a topology image first.');
-                return;
-            }
-        } catch (err) {
-            appendChatMessage('bot', 'text', 'Could not load the current topology. Please upload a topology image first.');
-            return;
-        }
+        appendChatMessage('bot', 'text', 'Please upload a topology image first so I have a base .gns3 to modify.');
+        return;
     }
 
     setChatBusy(true);
     showChatThinking();
 
-    // Build fallback list: selected model first
-    const chosen = getSelectedModel();
-    const trialOrder = [chosen, ...GEMINI_FALLBACK_MODELS.filter(m => m !== chosen)];
+    try {
+        const res  = await fetch('/ai-api/modify-topology', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ instruction: text, current_gns3: currentGns3 })
+        });
+        const json = await res.json();
+        hideChatThinking();
 
-    let json = null;
-    let usedModel = chosen;
-
-    for (const model of trialOrder) {
-        try {
-            const res = await fetch(`/api/modify-topology?model=${encodeURIComponent(model)}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ instruction: text, current_gns3: currentGns3 })
-            });
-            json = await res.json();
-
-            if (json.ok) { usedModel = model; break; }
-
-            const errStr = (json.error || '').toLowerCase();
-            const isModelMissing = errStr.includes('not found') || errStr.includes('404') || errStr.includes('not supported');
-            if (isModelMissing) {
-                continue; // try next model silently
-            }
-            break;
-        } catch (err) {
-            json = { ok: false, error: err.message };
-            break;
+        if (json.ok) {
+            const gns3Data = json.gns3;
+            gns3Data._chatLabel = 'modified.gns3';
+            currentGns3 = gns3Data;  // update base for chained edits
+            appendChatMessage('bot', 'code', gns3Data, gns3Data);
+            await populateTopologies('modified.gns3');
+        } else {
+            appendChatMessage('bot', 'error', `Modification failed: ${json.error}`);
         }
+    } catch (err) {
+        hideChatThinking();
+        appendChatMessage('bot', 'error', `Error: ${err.message}`);
+    } finally {
+        setChatBusy(false);
     }
-
-    hideChatThinking();
-
-    if (json && json.ok) {
-        // Update dropdown to whichever model succeeded
-        const sel = document.getElementById('gemini-model-select');
-        if (sel) sel.value = usedModel;
-
-        const gns3Data = json.gns3;
-        gns3Data._chatLabel = 'modified.gns3';
-        currentGns3 = gns3Data;
-        appendChatMessage('bot', 'code', gns3Data, gns3Data);
-        await populateTopologies('modified.gns3');
-
-        customLinks.length = 0;
-        customLinkCounter  = 0;
-        nodeRegistry       = {};
-        nodePositions      = {};
-        parseAndRender(gns3Data);
-    } else {
-        appendChatMessage('bot', 'error', `Modification failed: ${json?.error || 'Unknown error'}`);
-    }
-    setChatBusy(false);
 }
 
 // -- Clear history ------------------------
@@ -1766,28 +1669,22 @@ async function processTerminalCommand(cmd) {
     } else if (baseCmd === 'clear' || baseCmd === 'cls') {
         const out = document.getElementById('terminal-output');
         if (out) out.innerHTML = '';
-    } else if (baseCmd === 'ssh' || baseCmd === 'session' || baseCmd === 'use' || baseCmd === 'switch' || baseCmd === 'goto') {
+    } else if (baseCmd === 'ssh' || baseCmd === 'connect') {
         const target = parts[1];
         if (!target) {
             appendTermLine(`Usage: ${baseCmd} &lt;hostname&gt;`);
             return;
         }
-        const prev = currentTerminalHost;
         currentTerminalHost = target.toUpperCase();
         const promptEl = document.getElementById('term-prompt-active');
         if (promptEl) promptEl.textContent = `${currentTerminalHost}>`;
-        appendTermLine(`Session switched: <span class="term-highlight">${prev}</span> &rarr; <span class="term-highlight">${currentTerminalHost}</span>`);
-        appendTermLine(`${currentTerminalHost} is now active. Type <span class="term-highlight">help</span> for available commands.`);
+        appendTermLine(`Connected to ${currentTerminalHost}. Console is now active.`);
     } else if (baseCmd === 'help') {
         appendTermLine('Available commands:');
-        appendTermLine('  <span class="term-highlight">ping &lt;target&gt;</span>          - Send ICMP ECHO_REQUEST to network hosts');
-        appendTermLine('  <span class="term-highlight">session &lt;hostname&gt;</span>     - Switch active console session');
-        appendTermLine('  <span class="term-highlight">use &lt;hostname&gt;</span>         - Alias: switch active session');
-        appendTermLine('  <span class="term-highlight">switch &lt;hostname&gt;</span>      - Alias: switch active session');
-        appendTermLine('  <span class="term-highlight">goto &lt;hostname&gt;</span>        - Alias: switch active session');
-        appendTermLine('  <span class="term-highlight">ssh &lt;hostname&gt;</span>         - Alias: switch active session');
-        appendTermLine('  <span class="term-highlight">clear</span>                    - Clear the terminal screen');
-        appendTermLine('  <span class="term-highlight">help</span>                     - Show this message');
+        appendTermLine('  <span class="term-highlight">ping &lt;target&gt;</span> - Send ICMP ECHO_REQUEST to network hosts');
+        appendTermLine('  <span class="term-highlight">connect &lt;hostname&gt;</span> - Change active terminal session');
+        appendTermLine('  <span class="term-highlight">clear</span> - Clear the terminal screen');
+        appendTermLine('  <span class="term-highlight">help</span> - Show this message');
     } else {
         appendTermLine(`<span class="term-error">% Unknown command: ${baseCmd}</span>`);
     }

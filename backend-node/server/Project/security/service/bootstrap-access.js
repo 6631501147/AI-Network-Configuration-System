@@ -111,7 +111,9 @@ async function ensurePermissions(groupId, menus) {
 }
 
 exports.ensureBootstrapAccessForAccount = async function (accountId) {
+  console.log("ensureBootstrapAccessForAccount called with accountId:", accountId);
   if (!accountId || !mongo.ObjectId.isValid(accountId)) return;
+  console.log("useLocalBootstrapAccess():", useLocalBootstrapAccess());
   if (!useLocalBootstrapAccess()) return;
 
   const type = await ensureType();

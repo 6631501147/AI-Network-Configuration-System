@@ -64,7 +64,7 @@
 </template>
 <script>
   import {mapGetters} from 'vuex'
-  import CenterLoading from "@/projects/components/dialog/CenterLoading";
+  import CenterLoading from "@/projects/components/Dialog/CenterLoading";
   export default {
     name: 'Login',
     components: {CenterLoading},
@@ -123,7 +123,7 @@
         var body = {};
         body.username = btoa(this.username);
         body.password = btoa(this.password);
-        this.$store.dispatch("auth/signIn", body)
+        this.$store.dispatch("auth/singin", body)
 
       },
 

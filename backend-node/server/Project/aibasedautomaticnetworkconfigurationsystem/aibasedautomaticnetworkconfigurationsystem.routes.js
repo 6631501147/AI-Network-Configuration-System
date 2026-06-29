@@ -5,32 +5,77 @@ const router = express.Router();
 
 const account = require('../accounts/service/account');
 const authorization = require('../security/service/authorization');
-const networkconfig = require('./service/networkconfig');
+const aibasedautomaticnetworkconfigurationsystemDocument = require('./service/aibasedautomaticnetworkconfigurationsystem_document');
 
-const canView   = authorization.requirePermission('/ai-based-automatic-network-configuration-system/registry', 'view');
-const canEdit   = authorization.requirePermission('/ai-based-automatic-network-configuration-system/registry', 'edit');
-const canDelete = authorization.requirePermission('/ai-based-automatic-network-configuration-system/registry', 'delete');
-const canAction = authorization.requirePermission('/ai-based-automatic-network-configuration-system/registry', 'action');
+const canViewRegistry = authorization.requirePermission('/ai-based-automatic-network-configuration-system/registry', 'view');
+const canEditRegistry = authorization.requirePermission('/ai-based-automatic-network-configuration-system/registry', 'edit');
+const canDeleteRegistry = authorization.requirePermission('/ai-based-automatic-network-configuration-system/registry', 'delete');
+const canViewReports = authorization.requirePermission(['/ai-based-automatic-network-configuration-system/registry', '/ai-based-automatic-network-configuration-system/reports'], 'view');
 
-// All routes require a valid session
+function ok(response, data, status) {
+  return response.status(status || 200).json({
+    code: 20000,
+    message: 'Success',
+    data: data
+  });
+}
+
+function fail(response, error) {
+  const status = error && error.status ? error.status : 500;
+  return response.status(status).json({
+    code: status === 400 ? 40000 : 50000,
+    message: error && error.message ? error.message : 'AIBasedAutomaticNetworkConfigurationSystem request failed'
+  });
+}
+
 router.use(account.onCheckAuthorization);
 
-// List / query
-router.get('/registry',      canView,   networkconfig.onQuerys);
+router.get('/documents', canViewRegistry, async function (request, response) {
+  try {
+    return ok(response, await aibasedautomaticnetworkconfigurationsystemDocument.list(request.query || {}));
+  } catch (error) {
+    return fail(response, error);
+  }
+});
 
-// Get single
-router.get('/registry/:id',  canView,   networkconfig.onGet);
+router.get('/documents/stats', canViewReports, async function (request, response) {
+  try {
+    return ok(response, await aibasedautomaticnetworkconfigurationsystemDocument.stats());
+  } catch (error) {
+    return fail(response, error);
+  }
+});
 
-// Create
-router.post('/registry',     canEdit,   networkconfig.onCreate);
+router.post('/documents', canEditRegistry, async function (request, response) {
+  try {
+    return ok(response, await aibasedautomaticnetworkconfigurationsystemDocument.create(request.body || {}, request), 201);
+  } catch (error) {
+    return fail(response, error);
+  }
+});
 
-// Update
-router.put('/registry/:id',  canEdit,   networkconfig.onUpdate);
+router.put('/documents/:id', canEditRegistry, async function (request, response) {
+  try {
+    return ok(response, await aibasedautomaticnetworkconfigurationsystemDocument.update(request.params.id, request.body || {}, request));
+  } catch (error) {
+    return fail(response, error);
+  }
+});
 
-// Delete
-router.delete('/registry/:id', canDelete, networkconfig.onDelete);
+router.delete('/documents/:id', canDeleteRegistry, async function (request, response) {
+  try {
+    return ok(response, await aibasedautomaticnetworkconfigurationsystemDocument.remove(request.params.id));
+  } catch (error) {
+    return fail(response, error);
+  }
+});
 
-// Rerun configuration
-router.post('/registry/:id/rerun', canAction, networkconfig.onRerun);
+router.post('/documents/seed-demo', canEditRegistry, async function (request, response) {
+  try {
+    return ok(response, await aibasedautomaticnetworkconfigurationsystemDocument.seedDemo(request), 201);
+  } catch (error) {
+    return fail(response, error);
+  }
+});
 
 module.exports = router;

@@ -4,7 +4,7 @@
   "description": "AI Based Automatic Network Configuration System backend service.",
   "main": "server.js",
   "scripts": {
-    "test": "DOTENV_CONFIG_PATH=.env.test node -r dotenv/config -r ./test/node-test-setup.js --test server/Project/accounts/service/*.test.js server/Project/settings/service/*.test.js",
+    "test": "cross-env DOTENV_CONFIG_PATH=.env.test node -r dotenv/config -r ./test/node-test-setup.js --test server/Project/accounts/service/*.test.js server/Project/settings/service/*.test.js",
     "test:iam-sdk": "node -r ./test/node-test-setup.js --test server/Project/security/service/iam-admin-client.test.js",
     "test:contracts": "node --test test/*.test.js",
     "test:all": "npm run test && npm run test:iam-sdk && npm run test:contracts",
@@ -21,12 +21,12 @@
     "cleanup:audit-retention": "node -r dotenv/config scripts/cleanup-audit-retention.js",
     "seed:e2e-admin": "node -r dotenv/config scripts/seed-e2e-admin.js dotenv_config_path=.env.test",
     "start": "npm run start:local",
-    "start:local": "DOTENV_CONFIG_PATH=.env.local nodemon -r dotenv/config server.js",
-    "start:preprod": "DOTENV_CONFIG_PATH=.env.preprod node -r dotenv/config server.js",
-    "start:prod": "DOTENV_CONFIG_PATH=.env.prod node -r dotenv/config server.js",
-    "serve:e2e": "DOTENV_CONFIG_PATH=.env.test node -r dotenv/config server.js",
-    "serve:test": "DOTENV_CONFIG_PATH=.env.test node -r dotenv/config server.js",
-    "serve:prod": "DOTENV_CONFIG_PATH=.env.prod node -r dotenv/config server.js",
+    "start:local": "cross-env DOTENV_CONFIG_PATH=.env.local nodemon -r dotenv/config server.js",
+    "start:preprod": "cross-env DOTENV_CONFIG_PATH=.env.preprod node -r dotenv/config server.js",
+    "start:prod": "cross-env DOTENV_CONFIG_PATH=.env.prod node -r dotenv/config server.js",
+    "serve:e2e": "cross-env DOTENV_CONFIG_PATH=.env.test node -r dotenv/config server.js",
+    "serve:test": "cross-env DOTENV_CONFIG_PATH=.env.test node -r dotenv/config server.js",
+    "serve:prod": "cross-env DOTENV_CONFIG_PATH=.env.prod node -r dotenv/config server.js",
     "bootstrap:permissions:local": "node -r dotenv/config scripts/bootstrap-aibasedautomaticnetworkconfigurationsystem-permissions.js dotenv_config_path=.env.local",
     "bootstrap:iam": "node -r dotenv/config scripts/bootstrap-iam-permissions.js",
     "bootstrap:iam:local": "node -r dotenv/config scripts/bootstrap-iam-permissions.js dotenv_config_path=.env.local",
@@ -62,6 +62,7 @@
     "x-xss-protection": "^2.0.0"
   },
   "devDependencies": {
+    "cross-env": "^10.1.0",
     "nodemon": "^2.0.20"
   },
   "repository": {

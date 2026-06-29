@@ -122,6 +122,11 @@ function pickLangValue(items) {
     return found ? String(found.value) : '';
 }
 
+function toLangArray(value, defaultLang = 'en') {
+    if (value === null || value === undefined || String(value).trim() === '') return [];
+    return [{ key: defaultLang, value: String(value).trim() }];
+}
+
 
 exports.onCheckAuthorization = async function (request, response, next) {
     try {
@@ -133,8 +138,34 @@ exports.onCheckAuthorization = async function (request, response, next) {
             return response.status(401).json(missingTokenRes);
         }
 
-        const current = await iamAdminClient.resolveCurrentAccount(request);
-        const account = current && current.account ? current.account : null;
+        let account = null;
+        let authSession = null;
+
+        // 1. Try resolving locally first (for locally generated tokens like from Google SignIn)
+        if (accessToken) {
+            const localAccount = await Account.onQuery({ "control.device.xAccessToken": accessToken });
+            if (localAccount) {
+                account = localAccount;
+                // find session in device array
+                if (localAccount.control && Array.isArray(localAccount.control.device)) {
+                    authSession = localAccount.control.device.find(d => d.xAccessToken === accessToken) || null;
+                }
+            }
+        }
+
+        // 2. Fallback to IAM server if local token check fails
+        if (!account) {
+            try {
+                const current = await iamAdminClient.resolveCurrentAccount(request);
+                account = current && current.account ? current.account : null;
+                authSession = current && current.payload && current.payload.data && current.payload.data.authSession
+                    ? current.payload.data.authSession
+                    : null;
+            } catch (iamErr) {
+                // Ignore IAM errors, we will handle missing account below
+            }
+        }
+
         if (!account || !account._id) {
             var unauthorizedRes = await resMsg.onMessage_Response(0,40100);
             return response.status(401).json(unauthorizedRes);
@@ -145,14 +176,12 @@ exports.onCheckAuthorization = async function (request, response, next) {
         }
         request.body.accounts = String(account._id);
         request.authAccount = account;
-        request.authSession = current && current.payload && current.payload.data && current.payload.data.authSession
-            ? current.payload.data.authSession
-            : null;
+        request.authSession = authSession;
         return next();
 
     } catch (err) {
         var resData = await resMsg.onMessage_Response(0,40400)
-        response.status(404).json(resData);
+        return response.status(404).json(resData);
     }
 };
 
@@ -165,29 +194,20 @@ exports.verifyIdTokenGoogle = async function (request, response, next) {
                 return response.status(401).json(badToken);
             }
 
-            const { OAuth2Client } = require('google-auth-library');
-            const audience =
-                process.env.GOOGLE_CLIENT_ID ||
-                process.env.VUE_APP_CLIENTID ||
-                '225788483142-8pkg8on8nh60ao83ve33ff3lflv2ccvo.apps.googleusercontent.com';
-            const client = new OAuth2Client(audience || undefined);
-
+            const axios = require('axios');
             try {
-                const ticket = await client.verifyIdToken({
-                    idToken: token,
-                    audience: audience
+                const { data } = await axios.get('https://www.googleapis.com/oauth2/v3/userinfo', {
+                    headers: { Authorization: `Bearer ${token}` }
                 });
-                const payload = ticket.getPayload() || {};
-                request.body.email = payload.email || null;
-                request.body.googleSub = payload.sub || null;
-                request.body.googleGivenName = payload.given_name || null;
-                request.body.googleFamilyName = payload.family_name || null;
-                request.body.googlePicture = payload.picture || null;
+                request.body.email = data.email || null;
+                request.body.googleSub = data.sub || null;
+                request.body.googleGivenName = data.given_name || null;
+                request.body.googleFamilyName = data.family_name || null;
+                request.body.googlePicture = data.picture || null;
                 return next();
             } catch (error) {
                 console.error('Google token verification failed:', {
-                    message: error && error.message ? error.message : 'unknown_error',
-                    audience: audience
+                    message: error && error.message ? error.message : 'unknown_error'
                 });
                 var invalidToken = await resMsg.onMessage_Response(0,40100);
                 return response.status(401).json(invalidToken);
@@ -200,6 +220,7 @@ exports.verifyIdTokenGoogle = async function (request, response, next) {
         return response.status(500).json(resData);
     }
 };
+
 exports.SingIn = async function (request, response, next) {
     try {
         let query = {};
@@ -354,8 +375,7 @@ exports.SingIn = async function (request, response, next) {
         return response.status(200).json(resData);
     } catch (err) {
         console.error('SingIn error:', err);
-        const resData = await resMsg.onMessage_Response(0, 50000);
-        return response.status(500).json(resData);
+        return response.status(500).json({ code: "AUTH_SIGNIN_FAILED", message: String(err) });
     }
 };
 
@@ -368,8 +388,11 @@ exports.onMe = async function (request, response, next) {
         }
 
         var query = { _id: new mongo.ObjectId(accountId) };
+        console.log("onMe querying accountId:", accountId);
         var doc = await Account.onQuery(query, [{ path: 'status', select: 'key title description group state' }]);
+        console.log("onMe query result doc:", !!doc);
         if (!doc) {
+            console.log("onMe doc not found. Query was:", query);
             var emptyRes = await resMsg.onMessage_Response(0,40400);
             return response.status(404).json(emptyRes);
         }
@@ -1159,8 +1182,10 @@ exports.onUpdateAccount = async function (request, response, next) {
 
 exports.onTwoFaRequest = async function (request, response, next) {
     try {
+        console.log("onTwoFaRequest started, body:", request.body);
         var accountId = request.body && request.body.accounts ? request.body.accounts : null;
         if (!accountId || !mongo.ObjectId.isValid(accountId)) {
+            console.log("onTwoFaRequest failing at accountId check:", accountId);
             var bad = await resMsg.onMessage_Response(0,40400);
             return response.status(404).json(bad);
         }
@@ -1168,6 +1193,7 @@ exports.onTwoFaRequest = async function (request, response, next) {
         var query = { _id: new mongo.ObjectId(accountId) };
         var account = await Account.onQuery(query);
         if (!account) {
+            console.log("onTwoFaRequest failing at Account.onQuery, query:", query);
             var missingAccount = await resMsg.onMessage_Response(0,40400);
             return response.status(404).json(missingAccount);
         }
@@ -1180,6 +1206,7 @@ exports.onTwoFaRequest = async function (request, response, next) {
             targetEmail = authenEmail ? authenEmail.email : null;
         }
         if (!targetEmail) {
+            console.log("onTwoFaRequest failing at targetEmail check");
             var noEmail = await resMsg.onMessage_Response(0,40400);
             return response.status(404).json(noEmail);
         }

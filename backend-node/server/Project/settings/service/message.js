@@ -102,14 +102,17 @@ exports.onMessage_Response = async function (number, code, res) {
         (code != null)? query.code = code : null;
 
         var doc =  await infomation_messages.onQuery(query);
-        delete doc._id;
-        delete doc.create;
-        delete doc.update;
-        delete doc.__v;
-        delete doc.number;
-        delete doc.enable;
-
-        return doc
+        if (doc) {
+            delete doc._id;
+            delete doc.create;
+            delete doc.update;
+            delete doc.__v;
+            delete doc.number;
+            delete doc.enable;
+        } else {
+            doc = { code: code, message: "Error message not found" };
+        }
+        return doc;
 
     } catch (err) {
         return err

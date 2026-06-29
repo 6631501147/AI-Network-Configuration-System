@@ -36,7 +36,18 @@ module.exports = {
     }
   },
   devServer: {
-    disableHostCheck: true
+    disableHostCheck: true,
+    proxy: {
+      '^/ai-engine': {
+        target: 'http://127.0.0.1:8000',
+        pathRewrite: { '^/ai-engine': '' },
+        changeOrigin: true
+      },
+      '^/ai-api': {
+        target: 'http://127.0.0.1:8000',
+        changeOrigin: true
+      }
+    }
   },
   configureWebpack: {
     //Necessary to run npm link https://webpack.js.org/configuration/resolve/#resolve-symlinks

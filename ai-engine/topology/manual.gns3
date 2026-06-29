@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "saved_at": "2026-06-02T06:33:43.257Z",
+  "saved_at": "2026-05-27T08:36:16.735Z",
   "source_topology": "topology/KOTHANT.gns3",
   "node_positions": {
     "0957faa6-abb6-435f-a931-6759237391b6": {
@@ -62,24 +62,24 @@
       "source_id": "79e7458c-2cb6-4092-9e7a-28bd0844755e",
       "source_name": "PC2",
       "source_type": "PC",
+      "target_id": "c9c1a8ce-d009-443e-b048-7479de01a3fe",
+      "target_name": "PC5",
+      "target_type": "PC",
+      "source_port": "eth0",
+      "target_port": "eth0",
+      "status": "FAIL"
+    },
+    {
+      "id": "custom-2",
+      "source_id": "79e7458c-2cb6-4092-9e7a-28bd0844755e",
+      "source_name": "PC2",
+      "source_type": "PC",
       "target_id": "2cb6a249-95c5-4e3e-99c5-293bda15e5e0",
       "target_name": "R5",
       "target_type": "Router",
       "source_port": "eth0",
       "target_port": "eth0",
       "status": "SUCCESS"
-    },
-    {
-      "id": "custom-2",
-      "source_id": "c9c1a8ce-d009-443e-b048-7479de01a3fe",
-      "source_name": "PC5",
-      "source_type": "PC",
-      "target_id": "79e7458c-2cb6-4092-9e7a-28bd0844755e",
-      "target_name": "PC2",
-      "target_type": "PC",
-      "source_port": "eth0",
-      "target_port": "eth0",
-      "status": "FAIL"
     }
   ]
 }
