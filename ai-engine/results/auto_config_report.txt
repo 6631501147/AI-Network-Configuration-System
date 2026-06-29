@@ -1,0 +1,586 @@
+AI-Based Automatic Enterprise Network Configuration Report
+Generated at: 2026-05-23 14:57:22.180903
+======================================================================
+
+
+===== PC CONFIGURATION =====
+
+PC1: SUCCESS
+PC1 : 192.168.10.10 255.255.255.0 gateway 192.168.10.1
+
+PC1> save
+Saving startup configuration to startup.vpc
+.  done
+
+PC1> ip 192.168.10.10/24 192.168.10.1
+Checking for duplicate address...
+save
+
+
+PC2: SUCCESS
+PC2 : 192.168.20.10 255.255.255.0 gateway 192.168.20.1
+
+PC2> save
+Saving startup configuration to startup.vpc
+.  done
+
+PC2> ip 192.168.20.10/24 192.168.20.1
+Checking for duplicate address...
+save
+
+
+PC3: SUCCESS
+PC3 : 192.168.30.10 255.255.255.0 gateway 192.168.30.1
+
+PC3> save
+Saving startup configuration to startup.vpc
+.  done
+
+PC3> ip 192.168.30.10/24 192.168.30.1
+Checking for duplicate address...
+save
+
+
+PC4: SUCCESS
+PC4 : 192.168.40.10 255.255.255.0 gateway 192.168.40.1
+
+PC4> save
+Saving startup configuration to startup.vpc
+.  done
+
+PC4> ip 192.168.40.10/24 192.168.40.1
+Checking for duplicate address...
+save
+
+
+PC5: SUCCESS
+PC5 : 192.168.50.10 255.255.255.0 gateway 192.168.50.1
+
+PC5> save
+Saving startup configuration to startup.vpc
+.  done
+
+PC5> ip 192.168.50.10/24 192.168.50.1
+Checking for duplicate address...
+save
+
+
+PC6: SUCCESS
+PC6 : 192.168.80.10 255.255.255.0 gateway 192.168.80.1
+
+PC6> save
+Saving startup configuration to startup.vpc
+.  done
+
+PC6> ip 192.168.80.10/24 192.168.80.1
+Checking for duplicate address...
+save
+
+
+
+===== ROUTER CONFIGURATION =====
+
+R1: SUCCESS
+configure terminal
+
+Enter configuration commands, one per line.  End with CNTL/Z.
+R1-HQ(config)#hostname R1-HQ
+R1-HQ(config)#no ip domain-lookup
+R1-HQ(config)#interface FastEthernet0/0
+R1-HQ(config-if)#description HQ LAN - PC1
+R1-HQ(config-if)#ip address 192.168.10.1 255.255.255.0
+R1-HQ(config-if)#no shutdown
+R1-HQ(config-if)#exit
+
+R1-HQ(config)#interface FastEthernet2/1
+R1-HQ(config-if)#description WAN to R2 Branch1
+R1-HQ(config-if)#ip address 10.0.12.1 255.255.255.252
+R1-HQ(config-if)#no shutdown
+R1-HQ(config-if)#exit
+
+R1-HQ(config)#interface FastEthernet2/0
+R1-HQ(config-if)#description WAN to R3 Branch2
+R1-HQ(config-if)#ip address 10.0.13.1 255.255.255.252
+R1-HQ(config-if)#no shutdown
+R1-HQ(config-if)#exit
+R1-HQ(config)#interface FastEthernet1/0
+R1-HQ(config-if)#description WAN to R4 Branch3
+R1-HQ(config-if)#ip address 10.0.14.1 255.255.255.252
+R1-HQ(config-if)#no shutdown
+R1-HQ(config-if)#exit
+R1-HQ(config)#interface FastEthernet3/0
+R1-HQ(config-if)#description WAN to R7 ISP
+R1-HQ(config-if)#ip address 10.0.17.1 255.255.255.252
+R1-HQ(config-if)#no shutdown
+R1-HQ(config-if)#exit
+R1-HQ(config)#router ospf 1
+R1-HQ(config-router)#router-id 1.1.1.1
+R1-HQ(config-router)#network 192.168.10.0 0.0.0.255 area 0
+R1-HQ(config-router)#network 10.0.12.0 0.0.0.3 area 0
+R1-HQ(config-router)#network 10.0.13.0 0.0.0.3 area 0
+R1-HQ(config-router)#network 10.0.14.0 0.0.0.3 area 0
+R1-HQ(config-router)#default-information originate
+R1-HQ(config-router)#exit
+R1-HQ(config)#ip route 0.0.0.0 0.0.0.0 10.0.17.2
+R1-HQ(config)#end
+R1-HQ#
+
+R2: SUCCESS
+configure terminal
+Enter configuration commands, one per line.  End with CNTL/Z.
+R2-BRANCH1(config)#hostname R2-BRANCH1
+
+R2-BRANCH1(config)#no ip domain-lookup
+R2-BRANCH1(config)#interface FastEthernet0/0
+R2-BRANCH1(config-if)#description Branch1 LAN - PC2
+R2-BRANCH1(config-if)#ip address 192.168.20.1 255.255.255.0
+R2-BRANCH1(config-if)#no shutdown
+R2-BRANCH1(config-if)#exit
+R2-BRANCH1(config)#interface FastEthernet2/1
+R2-BRANCH1(config-if)#description WAN to R1 HQ
+R2-BRANCH1(config-if)#ip address 10.0.12.2 255.255.255.252
+R2-BRANCH1(config-if)#no shutdown
+R2-BRANCH1(config-if)#exit
+R2-BRANCH1(config)#router ospf 1
+R2-BRANCH1(config-router)#router-id 2.2.2.2
+R2-BRANCH1(config-router)#network 192.168.20.0 0.0.0.255 area 0
+R2-BRANCH1(config-router)#network 10.0.12.0 0.0.0.3 area 0
+R2-BRANCH1(config-router)#exit
+R2-BRANCH1(config)#end
+R2-BRANCH1#
+
+R3: SUCCESS
+configure terminal
+Enter configuration commands, one per line.  End with CNTL/Z.
+R3-BRANCH2(config)#hostname R3-BRANCH2
+R3-BRANCH2(config)#no ip domain-lookup
+R3-BRANCH2(config)#interface FastEthernet0/0
+R3-BRANCH2(config-if)#description Branch2 LAN - PC3
+R3-BRANCH2(config-if)#ip address 192.168.30.1 255.255.255.0
+R3-BRANCH2(config-if)#no shutdown
+R3-BRANCH2(config-if)#exit
+R3-BRANCH2(config)#interface FastEthernet1/0
+R3-BRANCH2(config-if)#description WAN to R1 HQ
+R3-BRANCH2(config-if)#ip address 10.0.13.2 255.255.255.252
+R3-BRANCH2(config-if)#no shutdown
+R3-BRANCH2(config-if)#exit
+R3-BRANCH2(config)#interface FastEthernet2/0
+R3-BRANCH2(config-if)#description WAN to R5 Data Center
+R3-BRANCH2(config-if)#ip address 10.0.35.1 255.255.255.252
+R3-BRANCH2(config-if)#no shutdown
+R3-BRANCH2(config-if)#exit
+R3-BRANCH2(config)#router ospf 1
+R3-BRANCH2(config-router)#router-id 3.3.3.3
+R3-BRANCH2(config-router)#network 192.168.30.0 0.0.0.255 area 0
+R3-BRANCH2(config-router)#network 10.0.13.0 0.0.0.3 area 0
+R3-BRANCH2(config-router)#network 10.0.35.0 0.0.0.3 area 0
+R3-BRANCH2(config-router)#exit
+R3-BRANCH2(config)#end
+R3-BRANCH2#
+
+R4: SUCCESS
+configure terminal
+Enter configuration commands, one per line.  End with CNTL/Z.
+R4-BRANCH3(config)#hostname R4-BRANCH3
+R4-BRANCH3(config)#no ip domain-lookup
+R4-BRANCH3(config)#interface FastEthernet0/0
+R4-BRANCH3(config-if)#description Branch3 LAN - PC4
+R4-BRANCH3(config-if)#ip address 192.168.40.1 255.255.255.0
+R4-BRANCH3(config-if)#no shutdown
+R4-BRANCH3(config-if)#exit
+R4-BRANCH3(config)#interface FastEthernet1/0
+R4-BRANCH3(config-if)#description WAN to R1 HQ
+R4-BRANCH3(config-if)#ip address 10.0.14.2 255.255.255.252
+R4-BRANCH3(config-if)#no shutdown
+R4-BRANCH3(config-if)#exit
+R4-BRANCH3(config)#router ospf 1
+R4-BRANCH3(config-router)#router-id 4.4.4.4
+R4-BRANCH3(config-router)#network 192.168.40.0 0.0.0.255 area 0
+R4-BRANCH3(config-router)#network 10.0.14.0 0.0.0.3 area 0
+R4-BRANCH3(config-router)#exit
+R4-BRANCH3(config)#end
+R4-BRANCH3#
+
+R5: SUCCESS
+configure terminal
+Enter configuration commands, one per line.  End with CNTL/Z.
+R5-DATACENTER(config)#hostname R5-DATACENTER
+R5-DATACENTER(config)#no ip domain-lookup
+R5-DATACENTER(config)#interface FastEthernet0/0
+R5-DATACENTER(config-if)#description Data Center LAN - PC5
+R5-DATACENTER(config-if)#ip address 192.168.50.1 255.255.255.0
+R5-DATACENTER(config-if)#no shutdown
+R5-DATACENTER(config-if)#exit
+R5-DATACENTER(config)#interface FastEthernet1/0
+R5-DATACENTER(config-if)#description WAN to R3 Branch2
+R5-DATACENTER(config-if)#ip address 10.0.35.2 255.255.255.252
+R5-DATACENTER(config-if)#no shutdown
+R5-DATACENTER(config-if)#exit
+R5-DATACENTER(config)#router ospf 1
+R5-DATACENTER(config-router)#router-id 5.5.5.5
+R5-DATACENTER(config-router)#network 192.168.50.0 0.0.0.255 area 0
+R5-DATACENTER(config-router)#network 10.0.35.0 0.0.0.3 area 0
+R5-DATACENTER(config-router)#exit
+R5-DATACENTER(config)#end
+R5-DATACENTER#
+
+R7: SUCCESS
+configure terminal
+Enter configuration commands, one per line.  End with CNTL/Z.
+R7-ISP(config)#hostname R7-ISP
+R7-ISP(config)#no ip domain-lookup
+R7-ISP(config)#interface FastEthernet1/0
+R7-ISP(config-if)#description WAN to R1 HQ
+R7-ISP(config-if)#ip address 10.0.17.2 255.255.255.252
+R7-ISP(config-if)#no shutdown
+R7-ISP(config-if)#exit
+R7-ISP(config)#interface FastEthernet2/0
+R7-ISP(config-if)#description WAN to R8 Partner
+R7-ISP(config-if)#ip address 10.0.78.1 255.255.255.252
+R7-ISP(config-if)#no shutdown
+R7-ISP(config-if)#exit
+R7-ISP(config)#ip route 192.168.10.0 255.255.255.0 10.0.17.1
+R7-ISP(config)#ip route 192.168.20.0 255.255.255.0 10.0.17.1
+R7-ISP(config)#ip route 192.168.30.0 255.255.255.0 10.0.17.1
+R7-ISP(config)#ip route 192.168.40.0 255.255.255.0 10.0.17.1
+R7-ISP(config)#ip route 192.168.50.0 255.255.255.0 10.0.17.1
+R7-ISP(config)#ip route 192.168.80.0 255.255.255.0 10.0.78.2
+R7-ISP(conf
+R7-ISP(config)#end
+R7-ISP#
+
+R8: SUCCESS
+configure terminal
+Enter configuration commands, one per line.  End with CNTL/Z.
+R8-PARTNER(config)#hostname R8-PARTNER
+R8-PARTNER(config)#no ip domain-lookup
+R8-PARTNER(config)#interface FastEthernet0/0
+R8-PARTNER(config-if)#description Partner LAN - PC6
+R8-PARTNER(config-if)#ip address 192.168.80.1 255.255.255.0
+R8-PARTNER(config-if)#no shutdown
+R8-PARTNER(config-if)#exit
+R8-PARTNER(config)#interface FastEthernet2/0
+R8-PARTNER(config-if)#description WAN to R7 ISP
+R8-PARTNER(config-if)#ip address 10.0.78.2 255.255.255.252
+R8-PARTNER(config-if)#no shutdown
+R8-PARTNER(config-if)#exit
+R8-PARTNER(config)#ip route 0.0.0.0 0.0.0.0 10.0.78.1
+R8-PARTNER(config)#end
+R8-PARTNER#
+
+
+===== VERIFICATION RESULTS =====
+
+===== R1 show ip interface brief =====
+Interface              IP-Address      OK? Method Status                Protocol
+FastEthernet0/0        192.168.10.1    YES NVRAM  up                    up      
+FastEthernet1/0        10.0.14.1       YES NVRAM  up                    up      
+FastEthernet2/0        10.0.13.1       YES NVRAM  up                    up      
+FastEthernet2/1        10.0.12.1       YES NVRAM  up                    up      
+FastEthernet3/0        10.0.17.1       YES NVRAM  up                    up      
+FastEthernet3/1        unassigned      YES NVRAM  administratively down down    
+
+===== R1 show ip route =====
+Codes: L - local, C - connected, S - static, R - RIP, M - mobile, B - BGP
+       D - EIGRP, EX - EIGRP external, O - OSPF, IA - OSPF inter area 
+       N1 - OSPF NSSA external type 1, N2 - OSPF NSSA external type 2
+       E1 - OSPF external type 1, E2 - OSPF external type 2
+       i - IS-IS, su - IS-IS summary, L1 - IS-IS level-1, L2 - IS-IS level-2
+       ia - IS-IS inter area, * - candidate default, U - per-user static route
+       o - ODR, P - periodic downloaded static route, H - NHRP, l - LISP
+       + - replicated route, % - next hop override
+
+Gateway of last resort is 10.0.17.2 to network 0.0.0.0
+
+S*    0.0.0.0/0 [1/0] via 10.0.17.2
+      10.0.0.0/8 is variably subnetted, 9 subnets, 2 masks
+C        10.0.12.0/30 is directly connected, FastEthernet2/1
+L        10.0.12.1/32 is directly connected, FastEthernet2/1
+C        10.0.13.0/30 is directly connected, FastEthernet2/0
+L        10.0.13.1/32 is directly connected, FastEthernet2/0
+C        10.0.14.0/30 is directly connected, FastEthernet1/0
+L        10.0.14.1/32 is directly connected, FastEthernet1/0
+C        10.0.17.0/30 is directly connected, FastEthernet3/0
+L        10.0.17.1/32 is directly connected, FastEthernet3/0
+O        10.0.35.0/30 [110/2] via 10.0.13.2, 01:38:33, FastEthernet2/0
+      192.168.10.0/24 is variably subnetted, 2 subnets, 2 masks
+C        192.168.10.0/24 is directly connected, FastEthernet0/0
+L        192.168.10.1/32 is directly connected, FastEthernet0/0
+O     192.168.20.0/24 [110/2] via 10.0.12.2, 01:38:43, FastEthernet2/1
+O     192.168.30.0/24 [110/2] via 10.0.13.2, 01:38:33, FastEthernet2/0
+O     192.168.40.0/24 [110/2] via 10.0.14.2, 01:38:33, FastEthernet1/0
+O     192.168.50.0/24 [110/3] via 10.0.13.2, 01:38:33, FastEthernet2/0
+
+===== R1 show ip ospf neighbor =====
+
+Neighbor ID     Pri   State           Dead Time   Address         Interface
+4.4.4.4           1   FULL/DR         00:00:34    10.0.14.2       FastEthernet1/0
+3.3.3.3           1   FULL/DR         00:00:33    10.0.13.2       FastEthernet2/0
+2.2.2.2           1   FULL/DR         00:00:34    10.0.12.2       FastEthernet2/1
+
+===== R2 show ip interface brief =====
+Interface              IP-Address      OK? Method Status                Protocol
+FastEthernet0/0        192.168.20.1    YES NVRAM  up                    up      
+FastEthernet1/0        unassigned      YES NVRAM  administratively down down    
+FastEthernet2/0        unassigned      YES NVRAM  administratively down down    
+FastEthernet2/1        10.0.12.2       YES NVRAM  up                    up      
+
+===== R2 show ip route =====
+Codes: L - local, C - connected, S - static, R - RIP, M - mobile, B - BGP
+       D - EIGRP, EX - EIGRP external, O - OSPF, IA - OSPF inter area 
+       N1 - OSPF NSSA external type 1, N2 - OSPF NSSA external type 2
+       E1 - OSPF external type 1, E2 - OSPF external type 2
+       i - IS-IS, su - IS-IS summary, L1 - IS-IS level-1, L2 - IS-IS level-2
+       ia - IS-IS inter area, * - candidate default, U - per-user static route
+       o - ODR, P - periodic downloaded static route, H - NHRP, l - LISP
+       + - replicated route, % - next hop override
+
+Gateway of last resort is 10.0.12.1 to network 0.0.0.0
+
+O*E2  0.0.0.0/0 [110/1] via 10.0.12.1, 01:38:48, FastEthernet2/1
+      10.0.0.0/8 is variably subnetted, 5 subnets, 2 masks
+C        10.0.12.0/30 is directly connected, FastEthernet2/1
+L        10.0.12.2/32 is directly connected, FastEthernet2/1
+O        10.0.13.0/30 [110/2] via 10.0.12.1, 01:38:43, FastEthernet2/1
+O        10.0.14.0/30 [110/2] via 10.0.12.1, 01:38:43, FastEthernet2/1
+O        10.0.35.0/30 [110/3] via 10.0.12.1, 01:38:43, FastEthernet2/1
+O     192.168.10.0/24 [110/2] via 10.0.12.1, 01:38:48, FastEthernet2/1
+      192.168.20.0/24 is variably subnetted, 2 subnets, 2 masks
+C        192.168.20.0/24 is directly connected, FastEthernet0/0
+L        192.168.20.1/32 is directly connected, FastEthernet0/0
+O     192.168.30.0/24 [110/3] via 10.0.12.1, 01:38:43, FastEthernet2/1
+O     192.168.40.0/24 [110/3] via 10.0.12.1, 01:38:43, FastEthernet2/1
+O     192.168.50.0/24 [110/4] via 10.0.12.1, 01:38:43, FastEthernet2/1
+
+===== R2 show ip ospf neighbor =====
+
+Neighbor ID     Pri   State           Dead Time   Address         Interface
+1.1.1.1           1   FULL/BDR        00:00:32    10.0.12.1       FastEthernet2/1
+
+===== R3 show ip interface brief =====
+Interface              IP-Address      OK? Method Status                Protocol
+FastEthernet0/0        192.168.30.1    YES NVRAM  up                    up      
+FastEthernet1/0        10.0.13.2       YES NVRAM  up                    up      
+FastEthernet2/0        10.0.35.1       YES NVRAM  up                    up      
+FastEthernet2/1        unassigned      YES NVRAM  administratively down down    
+
+===== R3 show ip route =====
+Codes: L - local, C - connected, S - static, R - RIP, M - mobile, B - BGP
+       D - EIGRP, EX - EIGRP external, O - OSPF, IA - OSPF inter area 
+       N1 - OSPF NSSA external type 1, N2 - OSPF NSSA external type 2
+       E1 - OSPF external type 1, E2 - OSPF external type 2
+       i - IS-IS, su - IS-IS summary, L1 - IS-IS level-1, L2 - IS-IS level-2
+       ia - IS-IS inter area, * - candidate default, U - per-user static route
+       o - ODR, P - periodic downloaded static route, H - NHRP, l - LISP
+       + - replicated route, % - next hop override
+
+Gateway of last resort is 10.0.13.1 to network 0.0.0.0
+
+O*E2  0.0.0.0/0 [110/1] via 10.0.13.1, 01:38:48, FastEthernet1/0
+      10.0.0.0/8 is variably subnetted, 6 subnets, 2 masks
+O        10.0.12.0/30 [110/2] via 10.0.13.1, 01:38:48, FastEthernet1/0
+C        10.0.13.0/30 is directly connected, FastEthernet1/0
+L        10.0.13.2/32 is directly connected, FastEthernet1/0
+O        10.0.14.0/30 [110/2] via 10.0.13.1, 01:38:48, FastEthernet1/0
+C        10.0.35.0/30 is directly connected, FastEthernet2/0
+L        10.0.35.1/32 is directly connected, FastEthernet2/0
+O     192.168.10.0/24 [110/2] via 10.0.13.1, 01:38:48, FastEthernet1/0
+O     192.168.20.0/24 [110/3] via 10.0.13.1, 01:38:48, FastEthernet1/0
+      192.168.30.0/24 is variably subnetted, 2 subnets, 2 masks
+C        192.168.30.0/24 is directly connected, FastEthernet0/0
+L        192.168.30.1/32 is directly connected, FastEthernet0/0
+O     192.168.40.0/24 [110/3] via 10.0.13.1, 01:38:48, FastEthernet1/0
+O     192.168.50.0/24 [110/2] via 10.0.35.2, 01:38:48, FastEthernet2/0
+
+===== R3 show ip ospf neighbor =====
+
+Neighbor ID     Pri   State           Dead Time   Address         Interface
+5.5.5.5           1   FULL/DR         00:00:39    10.0.35.2       FastEthernet2/0
+1.1.1.1           1   FULL/BDR        00:00:37    10.0.13.1       FastEthernet1/0
+
+===== R4 show ip interface brief =====
+Interface              IP-Address      OK? Method Status                Protocol
+FastEthernet0/0        192.168.40.1    YES NVRAM  up                    up      
+FastEthernet1/0        10.0.14.2       YES NVRAM  up                    up      
+FastEthernet2/0        unassigned      YES NVRAM  administratively down down    
+FastEthernet2/1        unassigned      YES NVRAM  administratively down down    
+
+===== R4 show ip route =====
+
+Codes: L - local, C - connected, S - static, R - RIP, M - mobile, B - BGP
+       D - EIGRP, EX - EIGRP external, O - OSPF, IA - OSPF inter area 
+       N1 - OSPF NSSA external type 1, N2 - OSPF NSSA external type 2
+       E1 - OSPF external type 1, E2 - OSPF external type 2
+       i - IS-IS, su - IS-IS summary, L1 - IS-IS level-1, L2 - IS-IS level-2
+       ia - IS-IS inter area, * - candidate default, U - per-user static route
+       o - ODR, P - periodic downloaded static route, H - NHRP, l - LISP
+       + - replicated route, % - next hop override
+
+Gateway of last resort is 10.0.14.1 to network 0.0.0.0
+
+O*E2  0.0.0.0/0 [110/1] via 10.0.14.1, 01:38:51, FastEthernet1/0
+      10.0.0.0/8 is variably subnetted, 5 subnets, 2 masks
+O        10.0.12.0/30 [110/2] via 10.0.14.1, 01:38:51, FastEthernet1/0
+O        10.0.13.0/30 [110/2] via 10.0.14.1, 01:38:51, FastEthernet1/0
+C        10.0.14.0/30 is directly connected, FastEthernet1/0
+L        10.0.14.2/32 is directly connected, FastEthernet1/0
+O        10.0.35.0/30 [110/3] via 10.0.14.1, 01:38:46, FastEthernet1/0
+O     192.168.10.0/24 [110/2] via 10.0.14.1, 01:38:51, FastEthernet1/0
+O     192.168.20.0/24 [110/3] via 10.0.14.1, 01:38:51, FastEthernet1/0
+O     192.168.30.0/24 [110/3] via 10.0.14.1, 01:38:46, FastEthernet1/0
+      192.168.40.0/24 is variably subnetted, 2 subnets, 2 masks
+C        192.168.40.0/24 is directly connected, FastEthernet0/0
+L        192.168.40.1/32 is directly connected, FastEthernet0/0
+O     192.168.50.0/24 [110/4] via 10.0.14.1, 01:38:46, FastEthernet1/0
+
+===== R4 show ip ospf neighbor =====
+
+Neighbor ID     Pri   State           Dead Time   Address         Interface
+1.1.1.1           1   FULL/BDR        00:00:37    10.0.14.1       FastEthernet1/0
+
+===== R5 show ip interface brief =====
+Interface              IP-Address      OK? Method Status                Protocol
+FastEthernet0/0        192.168.50.1    YES NVRAM  up                    up      
+FastEthernet1/0        10.0.35.2       YES NVRAM  up                    up      
+FastEthernet2/0        unassigned      YES NVRAM  administratively down down    
+FastEthernet2/1        unassigned      YES NVRAM  administratively down down    
+
+===== R5 show ip route =====
+Codes: L - local, C - connected, S - static, R - RIP, M - mobile, B - BGP
+       D - EIGRP, EX - EIGRP external, O - OSPF, IA - OSPF inter area 
+       N1 - OSPF NSSA external type 1, N2 - OSPF NSSA external type 2
+       E1 - OSPF external type 1, E2 - OSPF external type 2
+       i - IS-IS, su - IS-IS summary, L1 - IS-IS level-1, L2 - IS-IS level-2
+       ia - IS-IS inter area, * - candidate default, U - per-user static route
+       o - ODR, P - periodic downloaded static route, H - NHRP, l - LISP
+       + - replicated route, % - next hop override
+
+Gateway of last resort is 10.0.35.1 to network 0.0.0.0
+
+O*E2  0.0.0.0/0 [110/1] via 10.0.35.1, 01:38:55, FastEthernet1/0
+      10.0.0.0/8 is variably subnetted, 5 subnets, 2 masks
+O        10.0.12.0/30 [110/3] via 10.0.35.1, 01:38:55, FastEthernet1/0
+O        10.0.13.0/30 [110/2] via 10.0.35.1, 01:38:55, FastEthernet1/0
+O        10.0.14.0/30 [110/3] via 10.0.35.1, 01:38:55, FastEthernet1/0
+C        10.0.35.0/30 is directly connected, FastEthernet1/0
+L        10.0.35.2/32 is directly connected, FastEthernet1/0
+O     192.168.10.0/24 [110/3] via 10.0.35.1, 01:38:55, FastEthernet1/0
+O     192.168.20.0/24 [110/4] via 10.0.35.1, 01:38:55, FastEthernet1/0
+O     192.168.30.0/24 [110/2] via 10.0.35.1, 01:38:55, FastEthernet1/0
+O     192.168.40.0/24 [110/4] via 10.0.35.1, 01:38:50, FastEthernet1/0
+      192.168.50.0/24 is variably subnetted, 2 subnets, 2 masks
+C        192.168.50.0/24 is directly connected, FastEthernet0/0
+L        192.168.50.1/32 is directly connected, FastEthernet0/0
+
+===== R5 show ip ospf neighbor =====
+
+Neighbor ID     Pri   State           Dead Time   Address         Interface
+3.3.3.3           1   FULL/BDR        00:00:30    10.0.35.1       FastEthernet1/0
+
+===== R7 show ip interface brief =====
+Interface              IP-Address      OK? Method Status                Protocol
+FastEthernet0/0        unassigned      YES NVRAM  administratively down down    
+FastEthernet1/0        10.0.17.2       YES NVRAM  up                    up      
+FastEthernet2/0        10.0.78.1       YES NVRAM  up                    up      
+FastEthernet2/1        unassigned      YES NVRAM  administratively down down    
+
+===== R7 show ip route =====
+Codes: L - local, C - connected, S - static, R - RIP, M - mobile, B - BGP
+       D - EIGRP, EX - EIGRP external, O - OSPF, IA - OSPF inter area 
+       N1 - OSPF NSSA external type 1, N2 - OSPF NSSA external type 2
+       E1 - OSPF external type 1, E2 - OSPF external type 2
+       i - IS-IS, su - IS-IS summary, L1 - IS-IS level-1, L2 - IS-IS level-2
+       ia - IS-IS inter area, * - candidate default, U - per-user static route
+       o - ODR, P - periodic downloaded static route, H - NHRP, l - LISP
+       + - replicated route, % - next hop override
+
+Gateway of last resort is not set
+
+      10.0.0.0/8 is variably subnetted, 4 subnets, 2 masks
+C        10.0.17.0/30 is directly connected, FastEthernet1/0
+L        10.0.17.2/32 is directly connected, FastEthernet1/0
+C        10.0.78.0/30 is directly connected, FastEthernet2/0
+L        10.0.78.1/32 is directly connected, FastEthernet2/0
+S     192.168.10.0/24 [1/0] via 10.0.17.1
+S     192.168.20.0/24 [1/0] via 10.0.17.1
+S     192.168.30.0/24 [1/0] via 10.0.17.1
+S     192.168.40.0/24 [1/0] via 10.0.17.1
+S     192.168.50.0/24 [1/0] via 10.0.17.1
+S     192.168.80.0/24 [1/0] via 10.0.78.2
+
+===== R8 show ip interface brief =====
+Interface              IP-Address      OK? Method Status                Protocol
+FastEthernet0/0        192.168.80.1    YES NVRAM  up                    up      
+FastEthernet1/0        10.0.2.2        YES NVRAM  up                    down    
+FastEthernet2/0        10.0.78.2       YES NVRAM  up                    up      
+FastEthernet2/1        unassigned      YES NVRAM  administratively down down    
+
+===== R8 show ip route =====
+Codes: L - local, C - connected, S - static, R - RIP, M - mobile, B - BGP
+       D - EIGRP, EX - EIGRP external, O - OSPF, IA - OSPF inter area 
+       N1 - OSPF NSSA external type 1, N2 - OSPF NSSA external type 2
+       E1 - OSPF external type 1, E2 - OSPF external type 2
+       i - IS-IS, su - IS-IS summary, L1 - IS-IS level-1, L2 - IS-IS level-2
+       ia - IS-IS inter area, * - candidate default, U - per-user static route
+       o - ODR, P - periodic downloaded static route, H - NHRP, l - LISP
+       + - replicated route, % - next hop override
+
+Gateway of last resort is 10.0.78.1 to network 0.0.0.0
+
+S*    0.0.0.0/0 [1/0] via 10.0.78.1
+      10.0.0.0/8 is variably subnetted, 2 subnets, 2 masks
+C        10.0.78.0/30 is directly connected, FastEthernet2/0
+L        10.0.78.2/32 is directly connected, FastEthernet2/0
+      192.168.80.0/24 is variably subnetted, 2 subnets, 2 masks
+C        192.168.80.0/24 is directly connected, FastEthernet0/0
+L        192.168.80.1/32 is directly connected, FastEthernet0/0
+
+
+===== PING TEST RESULTS =====
+R1 -> 192.168.20.10: SUCCESS
+Type escape sequence to abort.
+Sending 5, 100-byte ICMP Echos to 192.168.20.10, timeout is 2 seconds:
+!!!!!
+Success rate is 100 percent (5/5), round-trip min/avg/max = 32/59/140 ms
+
+R1 -> 192.168.30.10: SUCCESS
+Type escape sequence to abort.
+Sending 5, 100-byte ICMP Echos to 192.168.30.10, timeout is 2 seconds:
+!!!!!
+Success rate is 100 percent (5/5), round-trip min/avg/max = 24/44/76 ms
+
+R1 -> 192.168.40.10: SUCCESS
+Type escape sequence to abort.
+Sending 5, 100-byte ICMP Echos to 192.168.40.10, timeout is 2 seconds:
+!!!!!
+Success rate is 100 percent (5/5), round-trip min/avg/max = 24/40/56 ms
+
+R1 -> 192.168.50.10: SUCCESS
+Type escape sequence to abort.
+Sending 5, 100-byte ICMP Echos to 192.168.50.10, timeout is 2 seconds:
+!!!!!
+Success rate is 100 percent (5/5), round-trip min/avg/max = 64/75/100 ms
+
+R2 -> 192.168.50.10: SUCCESS
+Type escape sequence to abort.
+Sending 5, 100-byte ICMP Echos to 192.168.50.10, timeout is 2 seconds:
+!!!!!
+Success rate is 100 percent (5/5), round-trip min/avg/max = 92/103/136 ms
+
+R4 -> 192.168.50.10: SUCCESS
+Type escape sequence to abort.
+Sending 5, 100-byte ICMP Echos to 192.168.50.10, timeout is 2 seconds:
+!!!!!
+Success rate is 100 percent (5/5), round-trip min/avg/max = 84/96/120 ms
+
+R8 -> 192.168.50.10: SUCCESS
+Type escape sequence to abort.
+Sending 5, 100-byte ICMP Echos to 192.168.50.10, timeout is 2 seconds:
+!!!!!
+Success rate is 100 percent (5/5), round-trip min/avg/max = 116/132/148 ms
+
+R8 -> 192.168.10.10: SUCCESS
+Type escape sequence to abort.
+Sending 5, 100-byte ICMP Echos to 192.168.10.10, timeout is 2 seconds:
+!!!!!
+Success rate is 100 percent (5/5), round-trip min/avg/max = 52/88/180 ms

@@ -1,6 +1,0 @@
-netmiko
-paramiko
-google-genai
-python-dotenv
-PyMySQL
-bcrypt

@@ -120,7 +120,14 @@ router.delete('/group', canDeleteGroup, function (request, response) {
 router.get('/permission', canViewPermission, function (request, response) {
   return iamAdminClient.forwardScopedSecurityPermissions(request, response);
 });
-router.get('/permission/my', iamAdminClient.forwardMyPermissions);
+const permission = require('./service/permission');
+router.get('/permission/my', function(request, response, next) {
+  const source = String(require('../../../config/config').security.permissionSource || 'iam').trim().toLowerCase();
+  if (source === 'local') {
+    return permission.onMyPermissions(request, response, next);
+  }
+  return iamAdminClient.forwardMyPermissions(request, response, next);
+});
 router.post('/permission', canEditPermission, function (request, response) {
   return iamAdminClient.forwardAdminRequest(request, response, {
     method: 'post',

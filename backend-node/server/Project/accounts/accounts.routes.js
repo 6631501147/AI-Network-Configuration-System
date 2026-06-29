@@ -26,75 +26,23 @@ const canActionLifecycle = authorization.requirePermission('/accounts/lifecycle'
   targetAccountId: (request) => request.params && request.params.id ? String(request.params.id) : ''
 });
 
-router.post("/signin", function (request, response) {
-  return iamAdminClient.forwardScopedSignin(request, response);
-});
-router.get("/auth/me", Account.onCheckAuthorization, function (request, response) {
-  return iamAdminClient.forwardUserRequest(request, response, {
-    method: 'get',
-    path: '/auth/me'
-  });
-});
-router.get("/auth/sessions", Account.onCheckAuthorization, function (request, response) {
-  return iamAdminClient.forwardUserRequest(request, response, {
-    method: 'get',
-    path: '/auth/sessions'
-  });
-});
-router.delete("/auth/sessions/:id", Account.onCheckAuthorization, function (request, response) {
-  return iamAdminClient.forwardUserRequest(request, response, {
-    method: 'delete',
-    path: `/auth/sessions/${String(request.params && request.params.id ? request.params.id : '')}`
-  });
-});
-router.post("/auth/logout", Account.onCheckAuthorization, function (request, response) {
-  return iamAdminClient.forwardUserRequest(request, response, {
-    method: 'post',
-    path: '/auth/logout'
-  });
-});
-router.post("/auth/logout-all", Account.onCheckAuthorization, function (request, response) {
-  return iamAdminClient.forwardUserRequest(request, response, {
-    method: 'post',
-    path: '/auth/logout-all'
-  });
-});
-router.post("/auth/2fa/request", Account.onCheckAuthorization, function (request, response) {
-  return iamAdminClient.forwardUserRequest(request, response, {
-    method: 'post',
-    path: '/auth/2fa/request'
-  });
-});
-router.post("/auth/2fa/verify", Account.onCheckAuthorization, function (request, response) {
-  return iamAdminClient.forwardUserRequest(request, response, {
-    method: 'post',
-    path: '/auth/2fa/verify'
-  });
-});
+router.post("/signin", Account.verifyIdTokenGoogle, Account.SingIn);
+router.get("/auth/me", Account.onCheckAuthorization, Account.onMe);
+router.get("/auth/sessions", Account.onCheckAuthorization, Account.onSessions);
+router.delete("/auth/sessions/:id", Account.onCheckAuthorization, Account.onRevokeSession);
+router.post("/auth/logout", Account.onCheckAuthorization, Account.onLogout);
+router.post("/auth/logout-all", Account.onCheckAuthorization, Account.onLogoutAll);
+router.post("/auth/2fa/request", Account.onCheckAuthorization, Account.onTwoFaRequest);
+router.post("/auth/2fa/verify", Account.onCheckAuthorization, Account.onTwoFaVerify);
 router.put("/auth/profile-photo", Account.onCheckAuthorization, function (request, response) {
   return iamAdminClient.forwardUserRequest(request, response, {
     method: 'put',
     path: '/auth/profile-photo'
   });
 });
-router.get("/auth/trusted-devices", Account.onCheckAuthorization, function (request, response) {
-  return iamAdminClient.forwardUserRequest(request, response, {
-    method: 'get',
-    path: '/auth/trusted-devices'
-  });
-});
-router.post("/auth/trust-device", Account.onCheckAuthorization, function (request, response) {
-  return iamAdminClient.forwardUserRequest(request, response, {
-    method: 'post',
-    path: '/auth/trust-device'
-  });
-});
-router.delete("/auth/trusted-devices/:id", Account.onCheckAuthorization, function (request, response) {
-  return iamAdminClient.forwardUserRequest(request, response, {
-    method: 'delete',
-    path: `/auth/trusted-devices/${String(request.params && request.params.id ? request.params.id : '')}`
-  });
-});
+router.get("/auth/trusted-devices", Account.onCheckAuthorization, Account.onTrustedDevices);
+router.post("/auth/trust-device", Account.onCheckAuthorization, Account.onTrustDevice);
+router.delete("/auth/trusted-devices/:id", Account.onCheckAuthorization, Account.onRevokeTrustedDevice);
 router.get("/accounts", Account.onCheckAuthorization, canViewAccounts, function (request, response) {
   return iamAdminClient.forwardAccountsList(request, response);
 });

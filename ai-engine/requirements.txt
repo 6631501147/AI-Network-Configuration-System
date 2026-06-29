@@ -1,0 +1,4 @@
+netmiko
+paramiko
+google-generativeai
+python-dotenv
