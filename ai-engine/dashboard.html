@@ -47,7 +47,7 @@
                         </div>
                     </div>
                     <div class="stat-value" id="total-pcs">0</div>
-                    <div class="stat-subtitle" id="success-pcs">0 Configured</div>
+                    <div class="stat-subtitle" id="success-pcs">0 Detected</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-header">
@@ -57,7 +57,37 @@
                         </div>
                     </div>
                     <div class="stat-value" id="total-routers">0</div>
-                    <div class="stat-subtitle" id="success-routers">0 Configured</div>
+                    <div class="stat-subtitle" id="success-routers">0 Detected</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <h3>Total Switches</h3>
+                        <div class="stat-icon-wrapper" style="background:rgba(20,184,166,0.15);box-shadow:0 0 20px rgba(20,184,166,0.2)">
+                            <i data-lucide="git-branch" class="stat-icon" style="color:#14b8a6"></i>
+                        </div>
+                    </div>
+                    <div class="stat-value" id="total-switches">0</div>
+                    <div class="stat-subtitle" id="success-switches">0 Detected</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <h3>Firewalls</h3>
+                        <div class="stat-icon-wrapper" style="background:rgba(239,68,68,0.15);box-shadow:0 0 20px rgba(239,68,68,0.2)">
+                            <i data-lucide="shield" class="stat-icon" style="color:#ef4444"></i>
+                        </div>
+                    </div>
+                    <div class="stat-value" id="total-firewalls">0</div>
+                    <div class="stat-subtitle" id="success-firewalls">0 Detected</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <h3>Servers</h3>
+                        <div class="stat-icon-wrapper" style="background:rgba(245,158,11,0.15);box-shadow:0 0 20px rgba(245,158,11,0.2)">
+                            <i data-lucide="server" class="stat-icon" style="color:#f59e0b"></i>
+                        </div>
+                    </div>
+                    <div class="stat-value" id="total-servers">0</div>
+                    <div class="stat-subtitle" id="success-servers">0 Detected</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-header">
@@ -147,12 +177,14 @@
                     </div>
 
                     <div class="topology-legend">
-                        <div class="legend-item"><span class="legend-dot pc"></span> VPC Node</div>
-                        <div class="legend-item"><span class="legend-dot router"></span> Router Node</div>
+                        <div class="legend-item"><span class="legend-dot pc"></span> VPC / PC</div>
+                        <div class="legend-item"><span class="legend-dot router"></span> Router</div>
+                        <div class="legend-item"><span class="legend-dot" style="background:#14b8a6"></span> Switch</div>
+                        <div class="legend-item"><span class="legend-dot" style="background:#ef4444"></span> Firewall</div>
+                        <div class="legend-item"><span class="legend-dot" style="background:#f59e0b"></span> Server</div>
+                        <div class="legend-item"><span class="legend-dot" style="background:#38bdf8"></span> Cloud</div>
                         <div class="legend-item"><span class="legend-line active"></span> Active Link</div>
-                        <div class="legend-item"><span class="legend-line success"></span> New (Success)</div>
-                        <div class="legend-item"><span class="legend-line fail"></span> New (Failed)</div>
-                        <div class="legend-item"><span class="legend-tip">⚙</span> Drag nodes · Scroll to zoom</div>
+                        <div class="legend-item"><span class="legend-tip">⚙</span> Drag · Zoom</div>
                     </div>
                 </div>
             </section>
@@ -172,6 +204,34 @@
                         <h2>Routers</h2>
                     </div>
                     <div class="device-grid" id="router-grid"></div>
+                </section>
+                <section class="device-section">
+                    <div class="section-title-bar">
+                        <i data-lucide="git-branch" class="title-bar-icon" style="color:#14b8a6"></i>
+                        <h2>Switches</h2>
+                    </div>
+                    <div class="device-grid" id="switch-grid"></div>
+                </section>
+                <section class="device-section">
+                    <div class="section-title-bar">
+                        <i data-lucide="shield" class="title-bar-icon" style="color:#ef4444"></i>
+                        <h2>Firewalls</h2>
+                    </div>
+                    <div class="device-grid" id="firewall-grid"></div>
+                </section>
+                <section class="device-section">
+                    <div class="section-title-bar">
+                        <i data-lucide="server" class="title-bar-icon" style="color:#f59e0b"></i>
+                        <h2>Servers</h2>
+                    </div>
+                    <div class="device-grid" id="server-grid"></div>
+                </section>
+                <section class="device-section">
+                    <div class="section-title-bar">
+                        <i data-lucide="cloud" class="title-bar-icon" style="color:#38bdf8"></i>
+                        <h2>Cloud / Internet</h2>
+                    </div>
+                    <div class="device-grid" id="cloud-grid"></div>
                 </section>
             </div>
 
@@ -324,6 +384,6 @@
         </div>
     </div>
 
-    <script src="dashboard.js"></script>
+    <script src="dashboard.js?v=2"></script>
 </body>
 </html>

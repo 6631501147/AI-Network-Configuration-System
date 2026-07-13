@@ -102,8 +102,8 @@ const en = {
     },
     nav: {
         dashboard: "Dashboard",
-        aibasedautomaticnetworkconfigurationsystemRegistry: "AI Based Automatic Network Configuration System Registry",
-        businessOperations: "AI Based Automatic Network Configuration System Operations",
+        aibasedautomaticnetworkconfigurationsystemRegistry: "Configuration Registry",
+        businessOperations: "Network Operations",
         banks: "Banks",
         template: "Template",
         accessControl: "Access Control",
@@ -199,36 +199,37 @@ const en = {
         pro: "PRO"
     },
     aibasedautomaticnetworkconfigurationsystemDashboard: {
-        kicker: "AI Based Automatic Network Configuration System Operations",
-        title: "AIBasedAutomaticNetworkConfigurationSystem management workspace",
-        subtitle: "Manage agreements, partner ownership, review state, and renewal timing while access remains delegated through IAM.",
-        scopeTitle: "Scope",
-        scopeHeading: "Available modules",
+        kicker: "Mae Fah Luang University · Network Engineering",
+        title: "AI-Based Automatic Network Configuration System",
+        subtitle: "Analyze network topology diagrams and automatically generate device configurations using AI. Supports GNS3, Packet Tracer, Visio, real diagrams, and hand-drawn sketches.",
+        scopeTitle: "System Scope",
+        scopeHeading: "Supported Topology Sources",
         actions: {
-            openRegistry: "Open AI Based Automatic Network Configuration System Registry"
+            openRegistry: "Open Configuration Registry",
+            openAIEngine: "Open AI Engine",
+            openNetworkOps: "Network Operations"
         },
         scopeItems: {
-            signIn: "Google sign-in for AIBasedAutomaticNetworkConfigurationSystem users",
-            delegatedPermission: "Permission management UI delegated to IAM",
-            accountDirectory: "Account directory delegated from IAM",
-            aibasedautomaticnetworkconfigurationsystemRegistry: "AIBasedAutomaticNetworkConfigurationSystem registry, review, reporting, and renewal workflows"
+            gns3: "GNS3 topology images",
+            packetTracer: "Packet Tracer screenshots",
+            visio: "Visio network diagrams",
+            realDiagrams: "Real network topology diagrams",
+            handDrawn: "Hand-drawn network sketches"
         },
-        cards: {
-            identity: {
-                label: "Identity Source",
-                value: "IAM",
-                hint: "AIBasedAutomaticNetworkConfigurationSystem does not duplicate identity master data."
-            },
-            apiFlow: {
-                label: "API Flow",
-                value: "Client Credentials",
-                hint: "Used for delegated AIBasedAutomaticNetworkConfigurationSystem-to-IAM integration."
-            },
-            owner: {
-                label: "Business Owner",
-                value: "AIBasedAutomaticNetworkConfigurationSystem",
-                hint: "This system stores agreement and workflow data only."
-            }
+        stats: {
+            total: { label: "Total Configurations", hint: "All registry records" },
+            active: { label: "Deployed", hint: "Active and validated" },
+            review: { label: "Under Review", hint: "Awaiting validation" },
+            expiring: { label: "Needs Update", hint: "Outdated or expiring" }
+        },
+        systemStatus: {
+            title: "System Status",
+            aiEngine: "AI Engine",
+            backendApi: "Backend API",
+            database: "Database"
+        },
+        quickActions: {
+            title: "Quick Actions"
         }
     },
     accounts: {

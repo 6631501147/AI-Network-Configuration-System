@@ -1,94 +1,127 @@
 <template>
-  <div class="business-ops-page">
-    <div class="ops-header">
+  <div class="netops-page">
+
+    <!-- Page Header -->
+    <div class="netops-header">
       <div>
-        <div class="ops-header__eyebrow">{{ profile.eyebrow }}</div>
-        <h1>{{ profile.title }}</h1>
-        <div class="ops-header__meta">{{ profile.period }} · {{ lastUpdatedLabel }}</div>
+        <div class="netops-header__eyebrow">AI-Based Automatic Network Configuration System</div>
+        <h1>Network Operations Dashboard</h1>
+        <div class="netops-header__meta">
+          Real-time overview of configuration generation activity · Last updated: {{ lastUpdatedLabel }}
+        </div>
       </div>
-      <div class="ops-header__actions">
-        <CButton color="primary" variant="outline" @click="refresh">
+      <div class="netops-header__actions">
+        <CButton color="primary" variant="outline" :disabled="loading" @click="refresh">
           <CIcon name="cil-reload" class="mr-2" />
           Refresh
         </CButton>
-        <router-link class="btn btn-outline-secondary" to="/security/permissions/matrix">
-          <CIcon name="cil-lock-locked" class="mr-2" />
-          Access Matrix
+        <router-link class="btn btn-outline-secondary" to="/aibasedautomaticnetworkconfigurationsystem/registry">
+          <CIcon name="cil-description" class="mr-2" />
+          Configuration Registry
         </router-link>
+        <a href="/ai-engine/dashboard.html" class="btn btn-outline-primary">
+          <CIcon name="cil-chart-pie" class="mr-2" />
+          AI Engine
+        </a>
       </div>
     </div>
 
-    <CRow>
-      <CCol v-for="metric in profile.metrics" :key="metric.label" xl="3" md="6" col="12" class="mb-3">
-        <CCard class="ops-card ops-metric" :class="`ops-metric--${metric.accent}`">
+    <!-- Error Alert -->
+    <div v-if="errorMessage" class="alert alert-warning mb-3">
+      <CIcon name="cil-warning" class="mr-2" />
+      {{ errorMessage }}
+    </div>
+
+    <!-- Live Metric Cards -->
+    <CRow class="mb-3">
+      <CCol v-for="metric in metricCards" :key="metric.key" xl="3" md="6" col="12" class="mb-3">
+        <CCard class="netops-metric" :class="`netops-metric--${metric.accent}`">
           <CCardBody>
-            <div class="ops-metric__top">
-              <div class="ops-metric__label">{{ metric.label }}</div>
+            <div class="netops-metric__top">
+              <div class="netops-metric__label">{{ metric.label }}</div>
               <CIcon :name="metric.icon" />
             </div>
-            <div class="ops-metric__value">{{ metric.value }}</div>
-            <div class="ops-metric__hint">{{ metric.hint }}</div>
+            <div class="netops-metric__value">
+              <template v-if="loading">—</template>
+              <template v-else>{{ metric.value }}</template>
+            </div>
+            <div class="netops-metric__hint">{{ metric.hint }}</div>
           </CCardBody>
         </CCard>
       </CCol>
     </CRow>
 
     <CRow>
+      <!-- Configuration Pipeline -->
       <CCol lg="8" class="mb-3">
-        <CCard class="ops-card h-100">
+        <CCard class="netops-card h-100">
           <CCardBody>
-            <div class="ops-section-heading">
+            <div class="netops-section-heading">
               <div>
-                <h2>Operating Workstreams</h2>
-                <span>{{ profile.workstreamMeta }}</span>
+                <h2>Configuration Pipeline</h2>
+                <span>Status distribution across all registry records</span>
               </div>
             </div>
 
-            <div class="ops-stream-tabs">
+            <div class="netops-pipeline-tabs">
               <button
-                v-for="stream in profile.workstreams"
-                :key="stream.id"
+                v-for="stage in pipelineStages"
+                :key="stage.id"
                 type="button"
-                class="ops-stream-tab"
-                :class="{ 'is-active': activeStreamId === stream.id }"
-                :aria-pressed="activeStreamId === stream.id ? 'true' : 'false'"
-                @click="setStream(stream.id)"
+                class="netops-pipeline-tab"
+                :class="{ 'is-active': activePipelineId === stage.id }"
+                :aria-pressed="activePipelineId === stage.id ? 'true' : 'false'"
+                @click="setStage(stage.id)"
               >
-                <span>{{ stream.name }}</span>
-                <strong>{{ stream.count }}</strong>
+                <span>{{ stage.name }}</span>
+                <strong>
+                  <template v-if="loading">—</template>
+                  <template v-else>{{ stage.count }}</template>
+                </strong>
               </button>
             </div>
 
-            <div class="ops-active-stream">
+            <div class="netops-active-stage">
               <div>
-                <div class="ops-active-stream__label">Focus</div>
-                <h3>{{ activeStream.name }}</h3>
-                <p>{{ activeStream.focus }}</p>
+                <div class="netops-active-stage__label">Stage Focus</div>
+                <h3>{{ activeStage.name }}</h3>
+                <p>{{ activeStage.description }}</p>
               </div>
-              <div class="ops-progress" :aria-label="`${activeStream.progress}% complete`">
-                <div class="ops-progress__bar" :style="{ width: activeStream.progress + '%' }"></div>
+              <div
+                class="netops-progress"
+                :aria-label="`${activeStagePercent}% of total`"
+                :title="`${activeStagePercent}% of all configurations`"
+              >
+                <div class="netops-progress__bar" :style="{ width: activeStagePercent + '%' }"></div>
               </div>
+              <div class="netops-progress__label">{{ activeStagePercent }}% of total configurations</div>
             </div>
           </CCardBody>
         </CCard>
       </CCol>
 
+      <!-- System Connections -->
       <CCol lg="4" class="mb-3">
-        <CCard class="ops-card h-100">
+        <CCard class="netops-card h-100">
           <CCardBody>
-            <div class="ops-section-heading">
+            <div class="netops-section-heading">
               <div>
-                <h2>Decision Queue</h2>
-                <span>{{ profile.decisionMeta }}</span>
+                <h2>System Connections</h2>
+                <span>Core services of the platform</span>
               </div>
             </div>
-            <div class="ops-decision-list">
-              <div v-for="item in profile.decisions" :key="item.title" class="ops-decision">
+            <div class="netops-service-list">
+              <div v-for="service in systemServices" :key="service.name" class="netops-service">
                 <div>
-                  <strong>{{ item.title }}</strong>
-                  <span>{{ item.owner }}</span>
+                  <strong>{{ service.name }}</strong>
+                  <span>{{ service.description }}</span>
                 </div>
-                <CBadge :color="statusColor(item.status)">{{ item.status }}</CBadge>
+                <div class="netops-service__badge-wrap">
+                  <a v-if="service.link" :href="service.link" class="netops-service__link">
+                    <CBadge :color="service.badgeColor">{{ service.badge }}</CBadge>
+                  </a>
+                  <CBadge v-else :color="service.badgeColor">{{ service.badge }}</CBadge>
+                </div>
               </div>
             </div>
           </CCardBody>
@@ -97,34 +130,52 @@
     </CRow>
 
     <CRow>
+      <!-- Recent Configurations Table -->
       <CCol lg="7" class="mb-3">
-        <CCard class="ops-card h-100">
+        <CCard class="netops-card h-100">
           <CCardBody>
-            <div class="ops-section-heading">
+            <div class="netops-section-heading">
               <div>
-                <h2>Operations Board</h2>
-                <span>{{ profile.boardMeta }}</span>
+                <h2>Recent Configurations</h2>
+                <span>Latest records in the Configuration Registry</span>
               </div>
+              <router-link to="/aibasedautomaticnetworkconfigurationsystem/registry" class="netops-view-all">
+                View all →
+              </router-link>
             </div>
-            <div class="ops-table-wrap">
-              <table class="ops-table">
+
+            <div class="netops-table-wrap">
+              <table class="netops-table">
                 <thead>
                   <tr>
-                    <th>Lane</th>
-                    <th>Owner</th>
-                    <th>Throughput</th>
+                    <th>Config ID</th>
+                    <th>Topology Name</th>
+                    <th>Topology Type</th>
                     <th>Status</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="row in profile.board" :key="row.lane">
-                    <td>
-                      <strong>{{ row.lane }}</strong>
-                      <span>{{ row.detail }}</span>
+                  <tr v-if="loading">
+                    <td colspan="4" class="netops-empty">Loading configurations…</td>
+                  </tr>
+                  <tr v-else-if="!recentDocs.length">
+                    <td colspan="4" class="netops-empty">
+                      No configurations yet.
+                      <router-link to="/aibasedautomaticnetworkconfigurationsystem/registry">Create one →</router-link>
                     </td>
-                    <td>{{ row.owner }}</td>
-                    <td>{{ row.throughput }}</td>
-                    <td><CBadge :color="statusColor(row.status)">{{ row.status }}</CBadge></td>
+                  </tr>
+                  <tr v-for="doc in recentDocs" :key="doc._id">
+                    <td>
+                      <strong class="netops-mono">{{ doc.aibasedautomaticnetworkconfigurationsystemNo }}</strong>
+                    </td>
+                    <td>
+                      <strong>{{ doc.title }}</strong>
+                      <span>{{ doc.ownerUnit || '—' }}</span>
+                    </td>
+                    <td>{{ doc.partnerName || '—' }}</td>
+                    <td>
+                      <CBadge :color="statusColor(doc.status)">{{ statusLabel(doc.status) }}</CBadge>
+                    </td>
                   </tr>
                 </tbody>
               </table>
@@ -133,23 +184,37 @@
         </CCard>
       </CCol>
 
+      <!-- Supported Topology Sources -->
       <CCol lg="5" class="mb-3">
-        <CCard class="ops-card h-100">
+        <CCard class="netops-card h-100">
           <CCardBody>
-            <div class="ops-section-heading">
+            <div class="netops-section-heading">
               <div>
-                <h2>Operating Timeline</h2>
-                <span>{{ profile.timelineMeta }}</span>
+                <h2>Supported Topology Sources</h2>
+                <span>Upload any of these topology types to the AI Engine</span>
               </div>
             </div>
-            <div class="ops-timeline">
-              <div v-for="item in profile.timeline" :key="item.time" class="ops-timeline__item">
-                <div class="ops-timeline__time">{{ item.time }}</div>
-                <div>
-                  <strong>{{ item.title }}</strong>
-                  <span>{{ item.note }}</span>
-                </div>
+            <div class="netops-source-grid">
+              <div
+                v-for="source in topologySources"
+                :key="source.label"
+                class="netops-source-chip"
+                :class="`netops-source-chip--${source.accent}`"
+              >
+                <CIcon :name="source.icon" class="mr-1" />
+                {{ source.label }}
               </div>
+            </div>
+
+            <div class="netops-ai-cta">
+              <CIcon name="cil-chart-pie" class="netops-ai-cta__icon" />
+              <div>
+                <strong>Ready to generate configurations?</strong>
+                <span>Upload a network topology diagram to the AI Engine.</span>
+              </div>
+              <a href="/ai-engine/dashboard.html" class="netops-ai-cta__btn">
+                Open AI Engine →
+              </a>
             </div>
           </CCardBody>
         </CCard>
@@ -159,59 +224,144 @@
 </template>
 
 <script>
-const PROFILE = {
+import api from '@/service/api'
 
-  eyebrow: 'AI Based Automatic Network Configuration System Operations',
-  title: 'AIBasedAutomaticNetworkConfigurationSystem Operating Desk',
-  period: 'Current agreement cycle',
-  workstreamMeta: 'Drafting, legal review, approval, renewal',
-  decisionMeta: 'Agreements waiting for action',
-  boardMeta: 'AIBasedAutomaticNetworkConfigurationSystem operation lanes',
-  timelineMeta: 'AIBasedAutomaticNetworkConfigurationSystem office rhythm',
-  metrics: [
-    { label: 'Review queue', value: '18', hint: '5 legal checks pending', icon: 'cil-list-rich', accent: 'amber' },
-    { label: 'Active AIBasedAutomaticNetworkConfigurationSystems', value: '126', hint: 'Across partner units', icon: 'cil-check-circle', accent: 'green' },
-    { label: 'Expiring soon', value: '9', hint: 'Within the next 90 days', icon: 'cil-warning', accent: 'red' },
-    { label: 'Renewal batches', value: '4', hint: 'Owner units preparing action', icon: 'cil-layers', accent: 'blue' }
-  ],
-  workstreams: [
-    { id: 'drafting', name: 'Drafting', count: '12', progress: 58, focus: 'Prepare partner details, scope, owner unit, and document checklist before review.' },
-    { id: 'review', name: 'Legal Review', count: '18', progress: 46, focus: 'Track legal comments, revision owners, and approval dependencies.' },
-    { id: 'renewal', name: 'Renewal', count: '9', progress: 72, focus: 'Coordinate owner units before agreements enter the expiry window.' }
-  ],
-  decisions: [
-    { title: 'Approve exchange agreement draft', owner: 'International Affairs', status: 'Ready' },
-    { title: 'Resolve legal comment set', owner: 'Legal Office', status: 'Watch' },
-    { title: 'Confirm renewal owner unit', owner: 'School Coordinator', status: 'In Review' }
-  ],
-  board: [
-    { lane: 'Partner Intake', detail: 'Partner profile and scope validation', owner: 'International Affairs', throughput: '12 drafts', status: 'In Review' },
-    { lane: 'Legal Review', detail: 'Contract language and risk checks', owner: 'Legal Office', throughput: '18 reviews', status: 'Watch' },
-    { lane: 'Approval Routing', detail: 'Executive approval and signatory tracking', owner: 'AIBasedAutomaticNetworkConfigurationSystem Secretariat', throughput: '7 approvals', status: 'On Track' },
-    { lane: 'Renewal Control', detail: 'Expiry window and owner confirmation', owner: 'Owner Units', throughput: '9 renewals', status: 'Watch' }
-  ],
-  timeline: [
-    { time: '09:30', title: 'Review queue triage', note: 'Prioritize expiring and executive-facing agreements.' },
-    { time: '12:00', title: 'Partner data checkpoint', note: 'Confirm partner profile and owner unit details.' },
-    { time: '15:30', title: 'Approval follow-up', note: 'Clear signatory, legal, and owner-unit actions.' },
-    { time: '17:00', title: 'Renewal snapshot', note: 'Publish expiring agreements and next actions.' }
-  ]
+const STATUS_MAP = {
+  draft: { label: 'Draft', color: 'secondary' },
+  review: { label: 'Under Review', color: 'warning' },
+  active: { label: 'Deployed', color: 'success' },
+  expiring: { label: 'Needs Update', color: 'danger' },
+  expired: { label: 'Deprecated', color: 'dark' },
+  archived: { label: 'Archived', color: 'secondary' }
 }
 
 export default {
-  name: 'BusinessOperations',
+  name: 'NetworkOperations',
   data () {
     return {
+      loading: false,
+      errorMessage: '',
       lastUpdated: new Date(),
-      activeStreamId: PROFILE.workstreams[0].id
+      activePipelineId: 'draft',
+      stats: {
+        total: 0,
+        active: 0,
+        review: 0,
+        expiring: 0,
+        expired: 0
+      },
+      recentDocs: [],
+      topologySources: [
+        { label: 'GNS3', icon: 'cil-image', accent: 'blue' },
+        { label: 'Packet Tracer', icon: 'cil-image1', accent: 'green' },
+        { label: 'Visio Diagram', icon: 'cil-file', accent: 'purple' },
+        { label: 'Real Diagram', icon: 'cil-camera', accent: 'amber' },
+        { label: 'Hand-Drawn', icon: 'cil-pencil', accent: 'red' },
+        { label: 'Topology File', icon: 'cil-cloud-upload', accent: 'teal' }
+      ],
+      systemServices: [
+        {
+          name: 'AI Engine',
+          description: 'Topology analysis & config generation',
+          badge: 'Visit',
+          badgeColor: 'primary',
+          link: '/ai-engine/dashboard.html'
+        },
+        {
+          name: 'Configuration Registry',
+          description: 'Store and manage generated configurations',
+          badge: 'Active',
+          badgeColor: 'success',
+          link: null
+        },
+        {
+          name: 'Account Management',
+          description: 'User access and permissions control',
+          badge: 'Active',
+          badgeColor: 'success',
+          link: null
+        },
+        {
+          name: 'Audit Explorer',
+          description: 'Track authentication and system events',
+          badge: 'Active',
+          badgeColor: 'success',
+          link: null
+        }
+      ]
     }
   },
   computed: {
-    profile () {
-      return PROFILE
+    metricCards () {
+      return [
+        {
+          key: 'total',
+          label: 'Total Configurations',
+          value: this.stats.total,
+          hint: 'All registry records',
+          icon: 'cil-description',
+          accent: 'blue'
+        },
+        {
+          key: 'active',
+          label: 'Deployed',
+          value: this.stats.active,
+          hint: 'Active and validated',
+          icon: 'cil-check-circle',
+          accent: 'green'
+        },
+        {
+          key: 'review',
+          label: 'Under Review',
+          value: this.stats.review,
+          hint: 'Awaiting validation',
+          icon: 'cil-list-rich',
+          accent: 'amber'
+        },
+        {
+          key: 'expiring',
+          label: 'Needs Update',
+          value: this.stats.expiring,
+          hint: 'Outdated or expiring',
+          icon: 'cil-warning',
+          accent: 'red'
+        }
+      ]
     },
-    activeStream () {
-      return this.profile.workstreams.find(item => item.id === this.activeStreamId) || this.profile.workstreams[0]
+    pipelineStages () {
+      return [
+        {
+          id: 'draft',
+          name: 'Draft',
+          count: Math.max(0, this.stats.total - this.stats.active - this.stats.review - this.stats.expiring - (this.stats.expired || 0)),
+          description: 'Newly created configuration records that have not yet entered the validation workflow.'
+        },
+        {
+          id: 'review',
+          name: 'Under Review',
+          count: this.stats.review,
+          description: 'Configurations currently under technical validation before deployment approval.'
+        },
+        {
+          id: 'active',
+          name: 'Deployed',
+          count: this.stats.active,
+          description: 'Validated configurations that have been successfully deployed to the target network environment.'
+        },
+        {
+          id: 'expiring',
+          name: 'Needs Update',
+          count: this.stats.expiring,
+          description: 'Configurations that are outdated or require revision due to network topology changes.'
+        }
+      ]
+    },
+    activeStage () {
+      return this.pipelineStages.find(s => s.id === this.activePipelineId) || this.pipelineStages[0]
+    },
+    activeStagePercent () {
+      if (!this.stats.total) return 0
+      return Math.round((this.activeStage.count / this.stats.total) * 100)
     },
     lastUpdatedLabel () {
       return new Intl.DateTimeFormat('en-GB', {
@@ -222,276 +372,480 @@ export default {
       }).format(this.lastUpdated)
     }
   },
+  mounted () {
+    this.refresh()
+  },
   methods: {
-    refresh () {
+    async refresh () {
+      this.loading = true
+      this.errorMessage = ''
       this.lastUpdated = new Date()
+      try {
+        await Promise.all([this.fetchStats(), this.fetchRecentDocs()])
+      } finally {
+        this.loading = false
+      }
     },
-    setStream (streamId) {
-      this.activeStreamId = streamId
+    async fetchStats () {
+      try {
+        const response = await api.aibasedautomaticnetworkconfigurationsystemDocuments('stats')
+        if (response && response.data && response.data.data) {
+          this.stats = Object.assign({}, this.stats, response.data.data)
+        }
+      } catch (err) {
+        this.errorMessage = 'Could not load configuration statistics. The registry may be empty or unavailable.'
+      }
+    },
+    async fetchRecentDocs () {
+      try {
+        const response = await api.aibasedautomaticnetworkconfigurationsystemDocuments('list', { limit: 5 })
+        if (response && response.data && response.data.data) {
+          const data = response.data.data
+          this.recentDocs = Array.isArray(data.rows) ? data.rows : []
+        }
+      } catch (err) {
+        // Non-critical — table shows empty state
+      }
+    },
+    setStage (stageId) {
+      this.activePipelineId = stageId
+    },
+    statusLabel (status) {
+      return (STATUS_MAP[status] && STATUS_MAP[status].label) || status || '—'
     },
     statusColor (status) {
-      const normalized = String(status || '').toLowerCase()
-      if (normalized.includes('ready') || normalized.includes('track')) return 'success'
-      if (normalized.includes('watch') || normalized.includes('review')) return 'warning'
-      if (normalized.includes('blocked') || normalized.includes('risk')) return 'danger'
-      return 'info'
+      return (STATUS_MAP[status] && STATUS_MAP[status].color) || 'secondary'
     }
   }
 }
 </script>
 
 <style scoped>
-.business-ops-page {
+.netops-page {
   padding: 0.25rem;
 }
 
-.ops-header {
+/* ─── Header ──────────────────────────────────────────── */
+.netops-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  margin-bottom: 1rem;
-  padding: 1rem 1.1rem;
+  margin-bottom: 1.25rem;
+  padding: 1.1rem 1.25rem;
   border: 1px solid #d9e2ef;
-  border-radius: 8px;
+  border-radius: 10px;
   background: #ffffff;
-  box-shadow: 0 12px 28px rgba(34, 45, 70, 0.06);
+  box-shadow: 0 4px 16px rgba(34, 45, 70, 0.06);
 }
 
-.ops-header__eyebrow,
-.ops-metric__label,
-.ops-active-stream__label {
-  color: #6b778c;
-  font-size: 0.74rem;
+.netops-header__eyebrow {
+  color: #64748b;
+  font-size: 0.73rem;
   font-weight: 700;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
+  margin-bottom: 0.2rem;
 }
 
-.ops-header h1 {
+.netops-header h1 {
   margin: 0.1rem 0;
-  color: #172033;
-  font-size: 1.55rem;
+  color: #0f172a;
+  font-size: 1.45rem;
   font-weight: 700;
 }
 
-.ops-header__meta,
-.ops-section-heading span,
-.ops-metric__hint,
-.ops-decision span,
-.ops-table td span,
-.ops-timeline__item span,
-.ops-active-stream p {
-  color: #667085;
-  font-size: 0.86rem;
-  line-height: 1.5;
+.netops-header__meta {
+  color: #64748b;
+  font-size: 0.84rem;
+  margin-top: 0.15rem;
 }
 
-.ops-header__actions {
+.netops-header__actions {
   display: flex;
   flex-wrap: wrap;
-  justify-content: flex-end;
+  align-items: center;
   gap: 0.6rem;
 }
 
-.ops-card {
+/* ─── Metric Cards ────────────────────────────────────── */
+.netops-metric {
+  min-height: 130px;
+  border: 1px solid #dfe7f2;
+  border-left-width: 5px;
+  border-radius: 8px;
+  box-shadow: 0 4px 14px rgba(34, 45, 70, 0.05);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.netops-metric:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px rgba(34, 45, 70, 0.1);
+}
+
+.netops-metric--blue { border-left-color: #2563eb; }
+.netops-metric--green { border-left-color: #16a34a; }
+.netops-metric--amber { border-left-color: #d97706; }
+.netops-metric--red { border-left-color: #dc2626; }
+
+.netops-metric__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 0.4rem;
+}
+
+.netops-metric__label {
+  color: #6b778c;
+  font-size: 0.73rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.netops-metric__top .c-icon {
+  color: #94a3b8;
+  width: 18px;
+  height: 18px;
+}
+
+.netops-metric__value {
+  color: #0f172a;
+  font-size: 1.85rem;
+  font-weight: 800;
+  line-height: 1;
+  margin-bottom: 0.35rem;
+}
+
+.netops-metric__hint {
+  color: #64748b;
+  font-size: 0.82rem;
+}
+
+/* ─── General Card ────────────────────────────────────── */
+.netops-card {
   border: 1px solid #dfe7f2;
   border-radius: 8px;
-  box-shadow: 0 10px 24px rgba(34, 45, 70, 0.055);
+  box-shadow: 0 4px 14px rgba(34, 45, 70, 0.055);
 }
 
-.ops-metric {
-  min-height: 142px;
-  border-left-width: 5px;
-}
-
-.ops-metric--blue {
-  border-left-color: #2563eb;
-}
-
-.ops-metric--green {
-  border-left-color: #16a34a;
-}
-
-.ops-metric--amber {
-  border-left-color: #d97706;
-}
-
-.ops-metric--red {
-  border-left-color: #dc2626;
-}
-
-.ops-metric__top,
-.ops-section-heading,
-.ops-decision,
-.ops-timeline__item {
+/* ─── Section Heading ─────────────────────────────────── */
+.netops-section-heading {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
-}
-
-.ops-metric__top .c-icon {
-  color: #5b6b82;
-  font-size: 1.15rem;
-}
-
-.ops-metric__value {
-  margin-top: 0.8rem;
-  color: #111827;
-  font-size: 1.75rem;
-  font-weight: 700;
-}
-
-.ops-section-heading {
   margin-bottom: 1rem;
 }
 
-.ops-section-heading h2 {
+.netops-section-heading h2 {
   margin: 0;
-  color: #172033;
+  color: #0f172a;
   font-size: 1rem;
   font-weight: 700;
 }
 
-.ops-stream-tabs {
+.netops-section-heading span {
+  color: #64748b;
+  font-size: 0.82rem;
+}
+
+.netops-view-all {
+  flex: 0 0 auto;
+  color: #2563eb;
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.netops-view-all:hover {
+  text-decoration: underline;
+}
+
+/* ─── Pipeline Tabs ───────────────────────────────────── */
+.netops-pipeline-tabs {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.65rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.6rem;
   margin-bottom: 1rem;
 }
 
-.ops-stream-tab {
+.netops-pipeline-tab {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 48px;
-  padding: 0.7rem 0.8rem;
+  min-height: 46px;
+  padding: 0.65rem 0.8rem;
   border: 1px solid #d8e0eb;
   border-radius: 8px;
   background: #f8fafc;
-  color: #243047;
-  font-weight: 700;
+  color: #334155;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
 }
 
-.ops-stream-tab.is-active {
+.netops-pipeline-tab:hover {
+  border-color: #94a3b8;
+  background: #f1f5f9;
+}
+
+.netops-pipeline-tab.is-active {
   border-color: #2563eb;
-  background: #eef5ff;
+  background: #eff6ff;
   color: #1d4ed8;
 }
 
-.ops-active-stream {
-  padding: 0.9rem;
+.netops-pipeline-tab strong {
+  font-size: 1.05rem;
+}
+
+/* ─── Active Stage ────────────────────────────────────── */
+.netops-active-stage {
+  padding: 0.9rem 1rem;
   border: 1px solid #d8e0eb;
   border-radius: 8px;
   background: #fbfcfe;
 }
 
-.ops-active-stream h3 {
-  margin: 0.15rem 0 0.35rem;
-  color: #172033;
-  font-size: 1.05rem;
+.netops-active-stage__label {
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  margin-bottom: 0.15rem;
+}
+
+.netops-active-stage h3 {
+  margin: 0 0 0.3rem;
+  color: #0f172a;
+  font-size: 1rem;
   font-weight: 700;
 }
 
-.ops-progress {
+.netops-active-stage p {
+  color: #475569;
+  font-size: 0.86rem;
+  line-height: 1.5;
+  margin-bottom: 0.85rem;
+}
+
+.netops-progress {
   height: 8px;
-  margin-top: 0.85rem;
   overflow: hidden;
   border-radius: 999px;
-  background: #e6edf7;
+  background: #e2e8f0;
+  margin-bottom: 0.4rem;
 }
 
-.ops-progress__bar {
+.netops-progress__bar {
   height: 100%;
   border-radius: 999px;
-  background: #2563eb;
+  background: linear-gradient(90deg, #2563eb, #6366f1);
+  transition: width 0.4s ease;
 }
 
-.ops-decision-list {
+.netops-progress__label {
+  color: #64748b;
+  font-size: 0.78rem;
+  text-align: right;
+}
+
+/* ─── Service List ────────────────────────────────────── */
+.netops-service-list {
   display: grid;
-  gap: 0.75rem;
+  gap: 0.7rem;
 }
 
-.ops-decision {
+.netops-service {
+  display: flex;
   align-items: center;
-  padding: 0.75rem;
-  border: 1px solid #e2e8f0;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid #e8eef7;
   border-radius: 8px;
-  background: #fbfcfe;
+  background: #f9fbfd;
 }
 
-.ops-decision strong,
-.ops-timeline__item strong {
+.netops-service strong,
+.netops-service span {
   display: block;
-  color: #1f2937;
 }
 
-.ops-table-wrap {
+.netops-service strong {
+  color: #1e293b;
+  font-size: 0.875rem;
+}
+
+.netops-service span {
+  color: #64748b;
+  font-size: 0.78rem;
+}
+
+.netops-service__badge-wrap {
+  flex: 0 0 auto;
+}
+
+.netops-service__link {
+  text-decoration: none;
+}
+
+/* ─── Recent Configs Table ────────────────────────────── */
+.netops-table-wrap {
   overflow-x: auto;
 }
 
-.ops-table {
+.netops-table {
   width: 100%;
   border-collapse: collapse;
 }
 
-.ops-table th,
-.ops-table td {
-  padding: 0.8rem 0.65rem;
-  border-bottom: 1px solid #e5ebf3;
-  vertical-align: top;
-}
-
-.ops-table th {
+.netops-table th {
   color: #516072;
-  font-size: 0.76rem;
+  font-size: 0.74rem;
   font-weight: 700;
   text-align: left;
   text-transform: uppercase;
-}
-
-.ops-table td {
-  color: #273449;
-}
-
-.ops-table td strong,
-.ops-table td span {
-  display: block;
-}
-
-.ops-timeline {
-  display: grid;
-  gap: 0.9rem;
-}
-
-.ops-timeline__item {
-  justify-content: flex-start;
-  padding-bottom: 0.9rem;
+  padding: 0.65rem 0.6rem;
   border-bottom: 1px solid #e5ebf3;
 }
 
-.ops-timeline__item:last-child {
-  padding-bottom: 0;
-  border-bottom: 0;
+.netops-table td {
+  color: #273449;
+  padding: 0.7rem 0.6rem;
+  border-bottom: 1px solid #edf1f7;
+  vertical-align: top;
+  font-size: 0.875rem;
 }
 
-.ops-timeline__time {
-  flex: 0 0 4.2rem;
-  color: #1d4ed8;
-  font-weight: 700;
+.netops-table td strong,
+.netops-table td span {
+  display: block;
 }
 
+.netops-table td span {
+  color: #64748b;
+  font-size: 0.8rem;
+}
+
+.netops-mono {
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 0.8rem;
+  color: #2563eb;
+}
+
+.netops-empty {
+  color: #64748b;
+  text-align: center;
+  padding: 2rem !important;
+  font-size: 0.9rem;
+}
+
+/* ─── Topology Source Chips ───────────────────────────── */
+.netops-source-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.netops-source-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border: 1px solid transparent;
+}
+
+.netops-source-chip .c-icon {
+  width: 13px;
+  height: 13px;
+}
+
+.netops-source-chip--blue { background: #eff6ff; color: #2563eb; border-color: #bfdbfe; }
+.netops-source-chip--green { background: #f0fdf4; color: #16a34a; border-color: #bbf7d0; }
+.netops-source-chip--purple { background: #f5f3ff; color: #7c3aed; border-color: #ddd6fe; }
+.netops-source-chip--amber { background: #fffbeb; color: #b45309; border-color: #fde68a; }
+.netops-source-chip--red { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
+.netops-source-chip--teal { background: #f0fdfa; color: #0d9488; border-color: #99f6e4; }
+
+/* ─── AI CTA Box ──────────────────────────────────────── */
+.netops-ai-cta {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  padding: 0.9rem 1rem;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #eff6ff 0%, #f5f3ff 100%);
+  border: 1px solid #c7d2fe;
+}
+
+.netops-ai-cta__icon {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  color: #4f46e5;
+  margin-top: 2px;
+}
+
+.netops-ai-cta strong,
+.netops-ai-cta span {
+  display: block;
+}
+
+.netops-ai-cta strong {
+  color: #1e293b;
+  font-size: 0.875rem;
+  margin-bottom: 0.15rem;
+}
+
+.netops-ai-cta span {
+  color: #475569;
+  font-size: 0.8rem;
+}
+
+.netops-ai-cta__btn {
+  flex: 0 0 auto;
+  align-self: center;
+  display: inline-block;
+  padding: 0.4rem 0.85rem;
+  border-radius: 6px;
+  background: #4f46e5;
+  color: #ffffff;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.15s ease;
+}
+
+.netops-ai-cta__btn:hover {
+  background: #4338ca;
+  color: #ffffff;
+  text-decoration: none;
+}
+
+/* ─── Responsive ──────────────────────────────────────── */
 @media (max-width: 991.98px) {
-  .ops-header {
-    align-items: flex-start;
+  .netops-header {
     flex-direction: column;
+    align-items: flex-start;
   }
 
-  .ops-header__actions {
-    justify-content: flex-start;
+  .netops-pipeline-tabs {
+    grid-template-columns: repeat(2, 1fr);
   }
+}
 
-  .ops-stream-tabs {
+@media (max-width: 575.98px) {
+  .netops-pipeline-tabs {
     grid-template-columns: 1fr;
   }
 }

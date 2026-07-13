@@ -17,13 +17,44 @@ def get_node_props(device_type):
                 "image": "c7200-adventerprisek9-mz.153-3.XB12.image"
             }
         }
-    elif device_type == "switch":
+    elif device_type in ("switch", "l3switch"):
         return {
             "node_type": "ethernet_switch",
             "symbol": ":/symbols/ethernet_switch.svg",
             "width": 70, "height": 50,
             "properties": {
                 "ports": [{"ethertype": "", "name": f"Ethernet{i}", "port_number": i, "type": "access", "vlan": 1} for i in range(8)]
+            }
+        }
+    elif device_type == "firewall":
+        return {
+            "node_type": "qemu",
+            "symbol": ":/symbols/firewall.svg",
+            "width": 70, "height": 50,
+            "properties": {
+                "hda_disk_image": "",
+                "ram": 1024,
+                "adapters": 4
+            }
+        }
+    elif device_type == "server":
+        return {
+            "node_type": "qemu",
+            "symbol": ":/symbols/server.svg",
+            "width": 70, "height": 50,
+            "properties": {
+                "hda_disk_image": "",
+                "ram": 512,
+                "adapters": 2
+            }
+        }
+    elif device_type == "cloud":
+        return {
+            "node_type": "cloud",
+            "symbol": ":/symbols/cloud.svg",
+            "width": 57, "height": 50,
+            "properties": {
+                "ports_mapping": [{"interface_name": "eth0", "name": "eth0", "port_number": 0, "type": "ethernet"}]
             }
         }
     else: # PC / unknown
