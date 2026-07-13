@@ -12,6 +12,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), 'scripts'))
 try:
     from ai_scanner.gemini_vision import analyze_image, modify_topology
     from ai_scanner.gns3_builder import build_gns3
+    import google.generativeai as genai
 except ImportError as _ie:
     # Define fallback stubs so NameError never occurs at request time
     def analyze_image(*a, **kw):   raise RuntimeError(f"ai_scanner import failed: {_ie}")
@@ -153,6 +154,78 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             except Exception as e:
                 self._json(500, {"ok": False, "error": str(e)})
                 print(f"[ERROR] modify-topology: {e}")
+
+        elif self.path == '/ai-api/run-cli':
+            length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(length)
+            try:
+                data = json.loads(body)
+                router_name = data.get('router_name', 'R1')
+                command = data.get('command', '').strip()
+                
+                allowed_prefixes = [
+                    'ping', 'show', 'ifconfig', 'ip ', 'netstat', 'traceroute', 'tracert',
+                    'arp', 'nslookup', 'curl', 'route', 'iptables', 'vlan', 'enable',
+                    'configure', 'exit', 'systemctl', 'cat', 'uname', 'hostname'
+                ]
+                
+                is_allowed = False
+                for prefix in allowed_prefixes:
+                    if command.lower().startswith(prefix):
+                        is_allowed = True
+                        break
+                        
+                if not is_allowed:
+                    self._json(200, {"ok": True, "output": f"% Unsupported command: '{command}'. Type 'help' for available commands."})
+                    return
+                    
+                print(f"[CLI] Simulating '{command}' on {router_name} via Gemini AI...")
+                
+                # Fetch API key dynamically
+                api_key = os.environ.get("GEMINI_API_KEY")
+                if not api_key:
+                    self._json(500, {"ok": False, "error": "GEMINI_API_KEY is missing from environment"})
+                    return
+                    
+                genai.configure(api_key=api_key)
+                model = genai.GenerativeModel('gemini-2.5-flash')
+                
+                lower_name = str(router_name).lower()
+                if "switch" in lower_name or "sw" in lower_name:
+                    device_desc = f"an Enterprise Layer 2/3 Ethernet Switch (Cisco IOS / L3 Switch) named {router_name}"
+                elif "fw" in lower_name or "firewall" in lower_name or "asa" in lower_name:
+                    device_desc = f"a Network Security Firewall (Cisco ASA or pfSense) named {router_name}"
+                elif "srv" in lower_name or "server" in lower_name or "dns" in lower_name or "web" in lower_name:
+                    device_desc = f"a Linux Enterprise Network Server named {router_name}"
+                elif "cloud" in lower_name or "internet" in lower_name:
+                    device_desc = f"a Cloud Gateway / Internet Edge Router named {router_name}"
+                elif "pc" in lower_name or "vpcs" in lower_name:
+                    device_desc = f"a Virtual PC workstation named {router_name}"
+                else:
+                    device_desc = f"a Cisco IOS Router named {router_name}"
+                
+                prompt = f"""You are {device_desc}. A network administrator/user just ran the CLI command: '{command}'. 
+Please generate the exact, realistic plain-text terminal output for this command on this specific type of device ({device_desc}).
+If the command is genuinely invalid for this device OS/platform, output the realistic error message (like '% Invalid input detected at ^ marker.' or 'command not found').
+Do not include any markdown formatting, code blocks, or explanations. Just output the raw terminal text exactly as it would appear in the console session."""
+
+                response = model.generate_content(prompt)
+                output = response.text.strip()
+                
+                # Remove markdown codeblocks if AI insists on using them
+                if output.startswith("```"):
+                    lines = output.split('\n')
+                    if len(lines) >= 2:
+                        if lines[-1].startswith("```"):
+                            output = '\n'.join(lines[1:-1])
+                        else:
+                            output = '\n'.join(lines[1:])
+                
+                self._json(200, {"ok": True, "output": output})
+                print(f"[CLI] Simulation completed on {router_name}")
+            except Exception as e:
+                self._json(500, {"ok": False, "error": str(e)})
+                print(f"[ERROR] run-cli: {e}")
 
         else:
             self._json(404, {"ok": False, "error": "Not found"})

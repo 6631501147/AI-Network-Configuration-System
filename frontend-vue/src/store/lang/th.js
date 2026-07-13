@@ -104,8 +104,8 @@ const th = {
     },
     nav: {
         dashboard: "แดชบอร์ด",
-        aibasedautomaticnetworkconfigurationsystemRegistry: "ทะเบียน AIBasedAutomaticNetworkConfigurationSystem",
-        businessOperations: "งานปฏิบัติการ AIBasedAutomaticNetworkConfigurationSystem",
+        aibasedautomaticnetworkconfigurationsystemRegistry: "ทะเบียนการกำหนดค่าเครือข่าย",
+        businessOperations: "ปฏิบัติการเครือข่าย",
         banks: "ธนาคาร",
         template: "ต้นแบบ",
         accessControl: "การควบคุมสิทธิ์",
@@ -201,36 +201,37 @@ const th = {
         pro: "PRO"
     },
     aibasedautomaticnetworkconfigurationsystemDashboard: {
-        kicker: "งานปฏิบัติการ AIBasedAutomaticNetworkConfigurationSystem",
-        title: "ศูนย์กลางจัดการ AIBasedAutomaticNetworkConfigurationSystem",
-        subtitle: "จัดการข้อตกลง หน่วยงานเจ้าของ สถานะการตรวจ และรอบต่ออายุ โดยให้สิทธิ์การใช้งานทำงานผ่าน IAM",
-        scopeTitle: "ขอบเขตการใช้งาน",
-        scopeHeading: "โมดูลที่เปิดใช้งาน",
+        kicker: "มหาวิทยาลัยแม่ฟ้าหลวง · วิศวกรรมเครือข่าย",
+        title: "ระบบกำหนดค่าเครือข่ายอัตโนมัติด้วย AI",
+        subtitle: "วิเคราะห์แผนผังโทโพโลยีเครือข่ายและสร้างการกำหนดค่าอุปกรณ์โดยอัตโนมัติด้วย AI รองรับ GNS3, Packet Tracer, Visio, แผนผังจริง และสเก็ตช์วาดมือ",
+        scopeTitle: "ขอบเขตระบบ",
+        scopeHeading: "แหล่งโทโพโลยีที่รองรับ",
         actions: {
-            openRegistry: "เปิดทะเบียน AIBasedAutomaticNetworkConfigurationSystem"
+            openRegistry: "เปิดทะเบียนการกำหนดค่า",
+            openAIEngine: "เปิด AI Engine",
+            openNetworkOps: "ปฏิบัติการเครือข่าย"
         },
         scopeItems: {
-            signIn: "Google sign-in สำหรับผู้ใช้ AIBasedAutomaticNetworkConfigurationSystem",
-            delegatedPermission: "หน้าจอจัดการสิทธิ์ที่ส่งคำสั่งไป IAM",
-            accountDirectory: "สารบบบัญชีที่ดึงสิทธิ์และข้อมูลจาก IAM",
-            aibasedautomaticnetworkconfigurationsystemRegistry: "ทะเบียน AIBasedAutomaticNetworkConfigurationSystem การตรวจ การรายงาน และการต่ออายุ"
+            gns3: "ภาพโทโพโลยี GNS3",
+            packetTracer: "ภาพหน้าจอ Packet Tracer",
+            visio: "แผนผัง Visio",
+            realDiagrams: "แผนผังเครือข่ายจริง",
+            handDrawn: "สเก็ตช์วาดมือ"
         },
-        cards: {
-            identity: {
-                label: "แหล่งข้อมูลตัวตน",
-                value: "IAM",
-                hint: "AIBasedAutomaticNetworkConfigurationSystem ไม่เก็บ identity master ซ้ำ"
-            },
-            apiFlow: {
-                label: "รูปแบบ API",
-                value: "Client Credentials",
-                hint: "ใช้สำหรับการเชื่อม AIBasedAutomaticNetworkConfigurationSystem ไป IAM แบบ delegated"
-            },
-            owner: {
-                label: "เจ้าของ business",
-                value: "AIBasedAutomaticNetworkConfigurationSystem",
-                hint: "ระบบนี้เก็บเฉพาะข้อมูลข้อตกลงและ workflow"
-            }
+        stats: {
+            total: { label: "การกำหนดค่าทั้งหมด", hint: "บันทึกในทะเบียนทั้งหมด" },
+            active: { label: "ใช้งานแล้ว", hint: "ตรวจสอบและใช้งานได้" },
+            review: { label: "กำลังตรวจสอบ", hint: "รอการตรวจสอบ" },
+            expiring: { label: "ต้องอัปเดต", hint: "ล้าสมัยหรือหมดอายุ" }
+        },
+        systemStatus: {
+            title: "สถานะระบบ",
+            aiEngine: "AI Engine",
+            backendApi: "Backend API",
+            database: "ฐานข้อมูล"
+        },
+        quickActions: {
+            title: "ลิงก์ด่วน"
         }
     },
     accounts: {

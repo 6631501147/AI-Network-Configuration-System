@@ -62,7 +62,7 @@ function parseAndRender(data) {
     const rawLinks = data.topology.links || [];
     const drawings = data.topology.drawings || [];
 
-    let pcs = [], routers = [];
+    let pcs = [], routers = [], switches = [], firewalls = [], servers = [], clouds = [];
     const nodeMap = {};
 
     rawNodes.sort((a, b) => {
@@ -72,20 +72,32 @@ function parseAndRender(data) {
     });
 
     for (const node of rawNodes) {
-        const isPC = node.name.startsWith('PC') || node.node_type === 'vpcs';
+        const nm = node.name.toLowerCase();
+        const nt = (node.node_type || '').toLowerCase();
+        let type = 'Router';
+        if (nm.startsWith('pc') || nt === 'vpcs') type = 'PC';
+        else if (nm.startsWith('sw') || nm.startsWith('switch') || nt === 'ethernet_switch') type = 'Switch';
+        else if (nm.startsWith('fw') || nm.startsWith('firewall') || nm.startsWith('asa') || nm.startsWith('pf')) type = 'Firewall';
+        else if (nm.startsWith('srv') || nm.startsWith('server') || nm.startsWith('web') || nm.startsWith('dns') || nm.startsWith('dhcp')) type = 'Server';
+        else if (nm.startsWith('cloud') || nm.startsWith('internet') || nm.startsWith('nat') || nt === 'cloud') type = 'Cloud';
+
         const device = {
             id: node.node_id, name: node.name, status: 'SUCCESS',
-            type: isPC ? 'PC' : 'Router',
+            type,
             x: node.x, y: node.y,
             properties: node.properties || {}
         };
         nodeMap[node.node_id] = device;
         nodeRegistry[node.node_id] = device;
-        // store original GNS3 coords so Reset Default can fully restore them
         device.origX = node.x;
         device.origY = node.y;
         nodePositions[node.node_id] = { x: node.x, y: node.y };
-        if (isPC) pcs.push(device); else routers.push(device);
+        if (type === 'PC') pcs.push(device);
+        else if (type === 'Switch') switches.push(device);
+        else if (type === 'Firewall') firewalls.push(device);
+        else if (type === 'Server') servers.push(device);
+        else if (type === 'Cloud') clouds.push(device);
+        else routers.push(device);
     }
 
     allLinks = [];
@@ -101,8 +113,7 @@ function parseAndRender(data) {
         }
     }
 
-    // Generate dynamic ping tests based on links
-    const pings = allLinks.map((lk, i) => {
+    const pings = allLinks.map((lk) => {
         const srcName = lk.source?.name || 'Unknown';
         const tgtName = lk.target?.name || 'Unknown';
         const tgtIP   = getIP(tgtName);
@@ -115,15 +126,14 @@ function parseAndRender(data) {
         };
     });
 
-    // Cache base render args for Reset Default
-    window._baseRenderArgs = { ts: "Topology Synced", pcs, routers, links: allLinks, drawings, pings };
-    renderDashboard("Topology Synced", pcs, routers, allLinks, drawings, pings);
+    window._baseRenderArgs = { ts: "Topology Synced", pcs, routers, switches, firewalls, servers, clouds, links: allLinks, drawings, pings };
+    renderDashboard("Topology Synced", pcs, routers, switches, firewalls, servers, clouds, allLinks, drawings, pings);
 }
 
 // ==========================================
 // RENDER DASHBOARD UI
 // ==========================================
-function renderDashboard(ts, pcs, routers, links, drawings, pings) {
+function renderDashboard(ts, pcs, routers, switches, firewalls, servers, clouds, links, drawings, pings) {
     document.getElementById('report-timestamp').innerHTML =
         `<i data-lucide="clock" class="inline-icon"></i> Status: ${ts}`;
 
@@ -132,19 +142,37 @@ function renderDashboard(ts, pcs, routers, links, drawings, pings) {
     badge.style.cssText = 'background:rgba(16,185,129,0.1);color:var(--accent-green);border-color:rgba(16,185,129,0.2)';
 
     document.getElementById('total-pcs').textContent = pcs.length;
-    document.getElementById('success-pcs').textContent = `${pcs.filter(p => p.status==='SUCCESS').length} Detected`;
+    document.getElementById('success-pcs').textContent = `${pcs.length} Detected`;
     document.getElementById('total-routers').textContent = routers.length;
-    document.getElementById('success-routers').textContent = `${routers.filter(r => r.status==='SUCCESS').length} Detected`;
+    document.getElementById('success-routers').textContent = `${routers.length} Detected`;
+    document.getElementById('total-switches').textContent = switches.length;
+    document.getElementById('success-switches').textContent = `${switches.length} Detected`;
+    document.getElementById('total-firewalls').textContent = firewalls.length;
+    document.getElementById('success-firewalls').textContent = `${firewalls.length} Detected`;
+    document.getElementById('total-servers').textContent = servers.length;
+    document.getElementById('success-servers').textContent = `${servers.length} Detected`;
     document.getElementById('total-pings').textContent = pings.length;
     document.getElementById('success-pings').textContent = `${pings.filter(p => p.status==='SUCCESS').length} Successful`;
 
-    const mkCard = (dev, type) => `
+    const ICON_MAP = {
+        'PC':       { cls: 'pc-icon',       icon: 'monitor',    color: '' },
+        'Router':   { cls: 'router-icon',   icon: 'router',     color: '' },
+        'Switch':   { cls: 'switch-icon',   icon: 'git-branch', color: '#14b8a6' },
+        'Firewall': { cls: 'firewall-icon', icon: 'shield',     color: '#ef4444' },
+        'Server':   { cls: 'server-icon',   icon: 'server',     color: '#f59e0b' },
+        'Cloud':    { cls: 'cloud-icon',    icon: 'cloud',      color: '#38bdf8' },
+    };
+    const mkCard = (dev) => {
+        const t = ICON_MAP[dev.type] || ICON_MAP['Router'];
+        const styleAttr = t.color ? `style="background:${t.color}22;border-color:${t.color}44"` : '';
+        const iconStyle = t.color ? `style="color:${t.color}"` : '';
+        return `
         <div class="device-card" id="card-${dev.id}"
              onmouseenter="onCardHover('${dev.id}')"
              onmouseleave="onCardLeave('${dev.id}')"
              onclick="onCardClick('${dev.id}')">
-            <div class="device-icon-wrapper ${type==='PC'?'pc-icon':'router-icon'}">
-                <i data-lucide="${type==='PC'?'monitor':'router'}"></i>
+            <div class="device-icon-wrapper ${t.cls}" ${styleAttr}>
+                <i data-lucide="${t.icon}" ${iconStyle}></i>
             </div>
             <div class="device-details">
                 <div class="device-name">${dev.name}</div>
@@ -154,11 +182,20 @@ function renderDashboard(ts, pcs, routers, links, drawings, pings) {
                 <span class="status-dot-inner"></span>${dev.status}
             </div>
         </div>`;
+    };
 
     document.getElementById('pc-grid').innerHTML =
-        pcs.length ? pcs.map(p => mkCard(p,'PC')).join('') : '<div class="loading">No PCs Found...</div>';
+        pcs.length ? pcs.map(d => mkCard(d)).join('') : '<div class="loading">No PCs Found...</div>';
     document.getElementById('router-grid').innerHTML =
-        routers.length ? routers.map(r => mkCard(r,'Router')).join('') : '<div class="loading">No Routers Found...</div>';
+        routers.length ? routers.map(d => mkCard(d)).join('') : '<div class="loading">No Routers Found...</div>';
+    document.getElementById('switch-grid').innerHTML =
+        switches.length ? switches.map(d => mkCard(d)).join('') : '<div class="loading">No Switches Found...</div>';
+    document.getElementById('firewall-grid').innerHTML =
+        firewalls.length ? firewalls.map(d => mkCard(d)).join('') : '<div class="loading">No Firewalls Found...</div>';
+    document.getElementById('server-grid').innerHTML =
+        servers.length ? servers.map(d => mkCard(d)).join('') : '<div class="loading">No Servers Found...</div>';
+    document.getElementById('cloud-grid').innerHTML =
+        clouds.length ? clouds.map(d => mkCard(d)).join('') : '<div class="loading">No Cloud Nodes Found...</div>';
 
     const mkRow = p => `
         <tr>
@@ -171,7 +208,8 @@ function renderDashboard(ts, pcs, routers, links, drawings, pings) {
     document.getElementById('ping-body').innerHTML =
         pings.length ? pings.map(mkRow).join('') : '<tr><td colspan="4" class="loading">No Ping Data...</td></tr>';
 
-    renderTopologyGraph(pcs.concat(routers), links, drawings);
+    const allDevices = [...pcs, ...routers, ...switches, ...firewalls, ...servers, ...clouds];
+    renderTopologyGraph(allDevices, links, drawings);
     lucide.createIcons();
 }
 
@@ -284,39 +322,40 @@ function renderLink(link, linksGrp, portsGrp) {
 }
 
 function renderNode(node, nodesGrp) {
-    const isPC = node.type === 'PC';
+    const ICON_MAP = {
+        'PC':       { cls: 'pc-node',       icon: 'monitor',    color: null },
+        'Router':   { cls: 'router-node',   icon: 'router',     color: null },
+        'Switch':   { cls: 'switch-node',   icon: 'git-branch', color: '#14b8a6' },
+        'Firewall': { cls: 'firewall-node', icon: 'shield',     color: '#ef4444' },
+        'Server':   { cls: 'server-node',   icon: 'server',     color: '#f59e0b' },
+        'Cloud':    { cls: 'cloud-node',    icon: 'cloud',      color: '#38bdf8' },
+    };
+    const t = ICON_MAP[node.type] || ICON_MAP['Router'];
     const pos = nodePositions[node.id] || {x:node.x, y:node.y};
-    const g = mkSVGGroup(`node-group ${isPC?'pc-node':'router-node'}`, nodesGrp);
+    const g = mkSVGGroup(`node-group ${t.cls}`, nodesGrp);
     g.setAttribute('id', `node-${node.id}`);
     g.setAttribute('data-node-id', node.id);
     g.setAttribute('data-node-name', node.name);
     g.setAttribute('data-node-type', node.type);
     g.setAttribute('transform', `translate(${pos.x},${pos.y})`);
 
-    // --- Hover (only if nothing is locked) ---
     g.addEventListener('mouseenter', () => {
         if (lockedNodeId && lockedNodeId !== node.id) return;
-        updateNodeOverlay(node, isPC);
+        updateNodeOverlay(node, node.type === 'PC');
         if (!lockedNodeId) applyNodeHighlight(node.id);
     });
     g.addEventListener('mouseleave', () => {
         if (!lockedNodeId) clearHighlightState();
     });
 
-    // --- Click: lock/unlock or connect ---
     g.addEventListener('click', e => {
         e.stopPropagation();
-        if (dragState?.hasMoved) return; // ignore click after drag
-
-        if (connectMode) {
-            handleConnectClick(node);
-            return;
-        }
+        if (dragState?.hasMoved) return;
+        if (connectMode) { handleConnectClick(node); return; }
         if (lockedNodeId === node.id) unlockSelection();
-        else lockSelection(node.id, node, isPC);
+        else lockSelection(node.id, node, node.type === 'PC');
     });
 
-    // --- Drag start ---
     g.addEventListener('mousedown', e => {
         if (e.button !== 0 || connectMode) return;
         e.stopPropagation();
@@ -331,17 +370,18 @@ function renderNode(node, nodesGrp) {
         g.classList.add('dragging');
     });
 
-    // Visual layers
     const pulse  = mkSVGElem('circle', {r:30, class:'node-pulse'});
     const base   = mkSVGElem('circle', {r:22, class:'node-circle-base'});
     const glow   = mkSVGElem('circle', {r:22, class:'node-circle-glow'});
     const fo = mkSVG('foreignObject');
     fo.setAttribute('x','-12'); fo.setAttribute('y','-12');
     fo.setAttribute('width','24'); fo.setAttribute('height','24');
-    fo.innerHTML = `<div class="node-icon-inner ${isPC?'pc':'router'}"><i data-lucide="${isPC?'monitor':'router'}"></i></div>`;
+    const iconStyle = t.color ? `color:${t.color}` : '';
+    fo.innerHTML = `<div class="node-icon-inner" style="${iconStyle}"><i data-lucide="${t.icon}"></i></div>`;
     const label  = mkSVGElem('text', {y:38, class:'node-label-text', 'text-anchor':'middle'});
     label.textContent = node.name;
     const beacon = mkSVGElem('circle', {r:5.5, cx:16, cy:-16, class:'node-status-badge'});
+    if (t.color) base.setAttribute('style', `fill:${t.color}22;stroke:${t.color}`);
 
     g.appendChild(pulse); g.appendChild(base); g.appendChild(glow);
     g.appendChild(fo);    g.appendChild(label); g.appendChild(beacon);
@@ -1610,86 +1650,72 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 async function processTerminalCommand(cmd) {
     const parts = cmd.split(' ').filter(Boolean);
+    if (!parts.length) return;
     const baseCmd = parts[0].toLowerCase();
     
-    if (baseCmd === 'ping') {
-        const target = parts[1];
-        if (!target) {
-            appendTermLine('Usage: ping &lt;ip-address or hostname&gt;');
-            return;
-        }
-        
-        // Find if target matches any node or generated IP
-        const nodes = Object.values(nodeRegistry || {});
-        let foundNode = nodes.find(n => n.name.toLowerCase() === target.toLowerCase());
-        
-        // Check if user typed an IP from the getIP helper
-        if (!foundNode && typeof getIP === 'function') {
-            foundNode = nodes.find(n => getIP(n.name) === target);
-        }
-        
-        if (!foundNode) {
-            appendTermLine(`Pinging ${target} with 32 bytes of data:`);
-            await sleep(500);
-            appendTermLine(`<span class="term-error">Request timed out.</span>`);
-            await sleep(500);
-            appendTermLine(`<span class="term-error">Request timed out.</span>`);
-            await sleep(500);
-            appendTermLine(`<span class="term-error">Request timed out.</span>`);
-            await sleep(500);
-            appendTermLine(`<span class="term-error">Request timed out.</span>`);
-            appendTermLine('<br>Ping statistics for ' + target + ':');
-            appendTermLine('    Packets: Sent = 4, Received = 0, Lost = 4 (100% loss)');
-            return;
-        }
-
-        const ip = typeof getIP === 'function' ? getIP(foundNode.name) : target;
-        const name = foundNode.name;
-        
-        appendTermLine(`Pinging ${name} [${ip}] with 32 bytes of data:`);
-        
-        let sent = 4, rec = 4;
-        let totalTime = 0, minTime = 999, maxTime = 0;
-        
-        for(let i=0; i<4; i++) {
-            await sleep(600);
-            const time = 2 + Math.floor(Math.random() * 20);
-            totalTime += time;
-            if(time < minTime) minTime = time;
-            if(time > maxTime) maxTime = time;
-            appendTermLine(`Reply from ${ip}: bytes=32 time=${time}ms TTL=64`);
-        }
-        
-        await sleep(400);
-        appendTermLine(`<br>Ping statistics for ${ip}:`);
-        appendTermLine(`    Packets: Sent = ${sent}, Received = ${rec}, Lost = 0 (0% loss),`);
-        appendTermLine(`Approximate round trip times in milli-seconds:`);
-        appendTermLine(`    Minimum = ${minTime}ms, Maximum = ${maxTime}ms, Average = ${Math.round(totalTime/4)}ms`);
-        
-    } else if (baseCmd === 'clear' || baseCmd === 'cls') {
+    if (baseCmd === 'clear' || baseCmd === 'cls') {
         const out = document.getElementById('terminal-output');
         if (out) out.innerHTML = '';
-    } else if (baseCmd === 'ssh' || baseCmd === 'connect') {
-        const target = parts[1];
+        return;
+    } 
+    
+    if (baseCmd === 'ssh' || baseCmd === 'connect' || baseCmd === 'switch') {
+        let target = parts[1];
+        if (baseCmd === 'switch' && target && target.toLowerCase() === 'to') {
+            target = parts.slice(2).join(' ') || parts[2];
+        } else if (baseCmd === 'switch' || baseCmd === 'connect' || baseCmd === 'ssh') {
+            target = parts.slice(1).join(' ') || parts[1];
+        }
         if (!target) {
-            appendTermLine(`Usage: ${baseCmd} &lt;hostname&gt;`);
+            appendTermLine(`Usage: <span class="term-highlight">switch to &lt;device/hostname&gt;</span> (e.g. switch to DMZ-switch, switch to Server1, switch to Cloud)`);
             return;
         }
-        currentTerminalHost = target.toUpperCase();
+        currentTerminalHost = target;
         const promptEl = document.getElementById('term-prompt-active');
         if (promptEl) promptEl.textContent = `${currentTerminalHost}>`;
-        appendTermLine(`Connected to ${currentTerminalHost}. Console is now active.`);
-    } else if (baseCmd === 'help') {
+        appendTermLine(`Switched terminal session to <span class="term-highlight" style="color:var(--accent-cyan);font-weight:bold">${currentTerminalHost}</span>. Active CLI console ready.`);
+        return;
+    } 
+    
+    if (baseCmd === 'help') {
         appendTermLine('Available commands:');
+        appendTermLine('  <span class="term-highlight">switch to &lt;device&gt;</span> - Switch active terminal session (e.g. switch to DMZ-switch, switch to Server1, switch to Cloud)');
         appendTermLine('  <span class="term-highlight">ping &lt;target&gt;</span> - Send ICMP ECHO_REQUEST to network hosts');
-        appendTermLine('  <span class="term-highlight">connect &lt;hostname&gt;</span> - Change active terminal session');
+        appendTermLine('  <span class="term-highlight">show ip interface brief</span> - Display interface status and IP assignments');
+        appendTermLine('  <span class="term-highlight">show ip route</span> - Display routing table');
+        appendTermLine('  <span class="term-highlight">show vlan</span> / <span class="term-highlight">show mac address-table</span> - Display switch VLANs & MAC tables');
+        appendTermLine('  <span class="term-highlight">show running-config</span> - Display running configuration');
+        appendTermLine('  <span class="term-highlight">ifconfig</span> / <span class="term-highlight">ip a</span> / <span class="term-highlight">netstat -r</span> - Display server/host network configuration');
+        appendTermLine('  <span class="term-highlight">show version</span> - Display system hardware and software status');
+        appendTermLine('  <span class="term-highlight">show interfaces</span> - Display interface statistics');
         appendTermLine('  <span class="term-highlight">clear</span> - Clear the terminal screen');
         appendTermLine('  <span class="term-highlight">help</span> - Show this message');
-    } else {
-        appendTermLine(`<span class="term-error">% Unknown command: ${baseCmd}</span>`);
+        return;
+    }
+
+    appendTermLine(`<span class="term-prompt" style="color:var(--text-muted)">Executing on ${currentTerminalHost}...</span>`);
+    
+    try {
+        const res = await fetch('/ai-api/run-cli', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ router_name: currentTerminalHost, command: cmd })
+        });
+        const json = await res.json();
+        
+        if (json.ok) {
+            let outHTML = json.output.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            outHTML = outHTML.replace(/\n/g, '<br>').replace(/ /g, '&nbsp;');
+            appendTermLine(`<div style="white-space: pre-wrap; font-family: monospace;">${outHTML}</div>`);
+        } else {
+            appendTermLine(`<span class="term-error">Error: ${json.error}</span>`);
+        }
+    } catch (err) {
+        appendTermLine(`<span class="term-error">Connection failed: ${err.message}</span>`);
     }
 }
 
 // Wire up terminal on load
 document.addEventListener('DOMContentLoaded', initTerminal, { once: false });
+
 
