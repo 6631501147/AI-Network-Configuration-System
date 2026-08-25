@@ -470,16 +470,9 @@ def generate_device_commands(device: dict, gns3_node: dict = None) -> list[str]:
     device_type = device.get("type", "router").lower()
     interfaces = device.get("interfaces", [])
 
-    # If we have the real GNS3 node, map the AI interfaces to the real GNS3 ports in order
-    if gns3_node and "ports" in gns3_node:
-        # Sort ports by adapter_number then port_number to match logical order
-        gns3_ports = sorted(gns3_node["ports"], key=lambda p: (p.get("adapter_number", 0), p.get("port_number", 0)))
-        
-        # Override the AI guessed interface names with the real hardware names
-        for i, iface in enumerate(interfaces):
-            if i < len(gns3_ports):
-                # We use the 'name' field from GNS3 (e.g., 'FastEthernet0/0')
-                iface["name"] = gns3_ports[i].get("name", iface.get("name"))
+    # We rely on the AI's interface names (e.g. 'f0/0' or 'f1/0') and normalize them
+    # later. Do not blindly overwrite them based on GNS3 port index order, as that 
+    # swaps IPs if the ports are not listed in the exact same order by the AI.
 
     # VPCS / PC nodes — minimal config
     if device_type in ("pc", "vpcs"):
