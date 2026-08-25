@@ -12,7 +12,6 @@ sys.path.append(os.path.join(os.path.dirname(__file__), 'scripts'))
 try:
     from ai_scanner.gemini_vision import analyze_image, modify_topology
     from ai_scanner.gns3_builder import build_gns3
-    import google.generativeai as genai
 except ImportError as _ie:
     # Define fallback stubs so NameError never occurs at request time
     def analyze_image(*a, **kw):   raise RuntimeError(f"ai_scanner import failed: {_ie}")
@@ -22,7 +21,7 @@ except ImportError as _ie:
 from email.parser import BytesParser
 from email.policy import default
 
-PORT = 8000
+PORT = 8001
 TOPOLOGY_DIR = 'topology'
 MANUAL_FILE  = os.path.join(TOPOLOGY_DIR, 'manual.gns3')
 
@@ -41,6 +40,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         self.send_response(200)
         self.end_headers()
 
+    def end_headers(self):
+        self.send_header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+        super().end_headers()
+
     def do_GET(self):
         if self.path == '/ai-api/topologies':
             try:
@@ -53,11 +56,44 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self._json(200, {"ok": True, "files": files})
             except Exception as e:
                 self._json(500, {"ok": False, "error": str(e)})
+
+        # ── GNS3 API: Status ──────────────────────────────────────────────────
+        elif self.path == '/gns3-api/status':
+            self._handle_gns3_status()
+
+        # ── GNS3 API: Projects ────────────────────────────────────────────────
+        elif self.path == '/gns3-api/projects':
+            self._handle_gns3_projects()
+
+        # ── GNS3 API: Nodes for a project ─────────────────────────────────────
+        elif self.path.startswith('/gns3-api/projects/') and self.path.endswith('/nodes'):
+            # /gns3-api/projects/{project_id}/nodes
+            parts = self.path.split('/')
+            # parts: ['', 'gns3-api', 'projects', '{pid}', 'nodes']
+            if len(parts) == 5:
+                project_id = parts[3]
+                self._handle_gns3_nodes(project_id)
+            else:
+                self._json(400, {"ok": False, "error": "Invalid path"})
+
+        # ── GNS3 API: Live IPs for a project ──────────────────────────────────
+        elif self.path.startswith('/gns3-api/projects/') and self.path.endswith('/live-ips'):
+            parts = self.path.split('/')
+            if len(parts) == 5:
+                project_id = parts[3]
+                self._handle_gns3_live_ips(project_id)
+            else:
+                self._json(400, {"ok": False, "error": "Invalid path"})
+
+        # ── GNS3 API: Execution logs ──────────────────────────────────────────
+        elif self.path == '/gns3-api/logs':
+            self._handle_gns3_logs()
+
         else:
             super().do_GET()
 
     def do_POST(self):
-        """Handle POST /api/save-manual  — saves manual.gns3"""
+        """Handle POST requests — existing AI endpoints + new GNS3 endpoints."""
         if self.path == '/ai-api/save-manual':
             length = int(self.headers.get('Content-Length', 0))
             body   = self.rfile.read(length)
@@ -103,7 +139,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 # 2. Build GNS3 project structure
                 gns3_project = build_gns3(topology_json)
                 
-                # 3. Save to scanned.gns3
+                # 3. Attach raw AI topology so frontend can use it for GNS3 apply
+                gns3_project['_ai_topology'] = topology_json
+                
+                # 4. Save to scanned.gns3
                 scanned_file = os.path.join(TOPOLOGY_DIR, 'scanned.gns3')
                 os.makedirs(TOPOLOGY_DIR, exist_ok=True)
                 with open(scanned_file, 'w', encoding='utf-8') as f:
@@ -155,80 +194,155 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self._json(500, {"ok": False, "error": str(e)})
                 print(f"[ERROR] modify-topology: {e}")
 
-        elif self.path == '/ai-api/run-cli':
-            length = int(self.headers.get('Content-Length', 0))
-            body = self.rfile.read(length)
-            try:
-                data = json.loads(body)
-                router_name = data.get('router_name', 'R1')
-                command = data.get('command', '').strip()
-                
-                allowed_prefixes = [
-                    'ping', 'show', 'ifconfig', 'ip ', 'netstat', 'traceroute', 'tracert',
-                    'arp', 'nslookup', 'curl', 'route', 'iptables', 'vlan', 'enable',
-                    'configure', 'exit', 'systemctl', 'cat', 'uname', 'hostname'
-                ]
-                
-                is_allowed = False
-                for prefix in allowed_prefixes:
-                    if command.lower().startswith(prefix):
-                        is_allowed = True
-                        break
-                        
-                if not is_allowed:
-                    self._json(200, {"ok": True, "output": f"% Unsupported command: '{command}'. Type 'help' for available commands."})
-                    return
-                    
-                print(f"[CLI] Simulating '{command}' on {router_name} via Gemini AI...")
-                
-                # Fetch API key dynamically
-                api_key = os.environ.get("GEMINI_API_KEY")
-                if not api_key:
-                    self._json(500, {"ok": False, "error": "GEMINI_API_KEY is missing from environment"})
-                    return
-                    
-                genai.configure(api_key=api_key)
-                model = genai.GenerativeModel('gemini-2.5-flash')
-                
-                lower_name = str(router_name).lower()
-                if "switch" in lower_name or "sw" in lower_name:
-                    device_desc = f"an Enterprise Layer 2/3 Ethernet Switch (Cisco IOS / L3 Switch) named {router_name}"
-                elif "fw" in lower_name or "firewall" in lower_name or "asa" in lower_name:
-                    device_desc = f"a Network Security Firewall (Cisco ASA or pfSense) named {router_name}"
-                elif "srv" in lower_name or "server" in lower_name or "dns" in lower_name or "web" in lower_name:
-                    device_desc = f"a Linux Enterprise Network Server named {router_name}"
-                elif "cloud" in lower_name or "internet" in lower_name:
-                    device_desc = f"a Cloud Gateway / Internet Edge Router named {router_name}"
-                elif "pc" in lower_name or "vpcs" in lower_name:
-                    device_desc = f"a Virtual PC workstation named {router_name}"
-                else:
-                    device_desc = f"a Cisco IOS Router named {router_name}"
-                
-                prompt = f"""You are {device_desc}. A network administrator/user just ran the CLI command: '{command}'. 
-Please generate the exact, realistic plain-text terminal output for this command on this specific type of device ({device_desc}).
-If the command is genuinely invalid for this device OS/platform, output the realistic error message (like '% Invalid input detected at ^ marker.' or 'command not found').
-Do not include any markdown formatting, code blocks, or explanations. Just output the raw terminal text exactly as it would appear in the console session."""
+        # ── GNS3 API: Start a node ────────────────────────────────────────────
+        elif self.path.startswith('/gns3-api/projects/') and '/nodes/' in self.path and self.path.endswith('/start'):
+            # /gns3-api/projects/{pid}/nodes/{nid}/start
+            parts = self.path.split('/')
+            if len(parts) == 7:
+                project_id = parts[3]
+                node_id    = parts[5]
+                self._handle_gns3_start_node(project_id, node_id)
+            else:
+                self._json(400, {"ok": False, "error": "Invalid path"})
 
-                response = model.generate_content(prompt)
-                output = response.text.strip()
-                
-                # Remove markdown codeblocks if AI insists on using them
-                if output.startswith("```"):
-                    lines = output.split('\n')
-                    if len(lines) >= 2:
-                        if lines[-1].startswith("```"):
-                            output = '\n'.join(lines[1:-1])
-                        else:
-                            output = '\n'.join(lines[1:])
-                
-                self._json(200, {"ok": True, "output": output})
-                print(f"[CLI] Simulation completed on {router_name}")
-            except Exception as e:
-                self._json(500, {"ok": False, "error": str(e)})
-                print(f"[ERROR] run-cli: {e}")
+        # ── GNS3 API: Config preview ──────────────────────────────────────────
+        elif self.path == '/gns3-api/config-preview':
+            self._handle_gns3_config_preview()
+
+        # ── GNS3 API: Apply config ────────────────────────────────────────────
+        elif self.path == '/gns3-api/apply-config':
+            self._handle_gns3_apply_config()
+
+        # ── GNS3 API: Verify config ───────────────────────────────────────────
+        elif self.path == '/gns3-api/verify':
+            self._handle_gns3_verify()
 
         else:
             self._json(404, {"ok": False, "error": "Not found"})
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # GNS3 ROUTE HANDLERS
+    # ══════════════════════════════════════════════════════════════════════════
+
+    def _handle_gns3_status(self):
+        try:
+            from gns3_service import check_connection
+            result = check_connection()
+            self._json(200, result)
+        except Exception as e:
+            self._json(500, {"ok": False, "error": str(e)})
+
+    def _handle_gns3_projects(self):
+        try:
+            from gns3_service import get_projects
+            result = get_projects()
+            self._json(200, result)
+        except Exception as e:
+            self._json(500, {"ok": False, "error": str(e)})
+
+    def _handle_gns3_nodes(self, project_id: str):
+        try:
+            from gns3_service import get_project_nodes
+            result = get_project_nodes(project_id)
+            self._json(200, result)
+        except Exception as e:
+            self._json(500, {"ok": False, "error": str(e)})
+
+    def _handle_gns3_live_ips(self, project_id: str):
+        try:
+            from gns3_service import get_live_ips
+            result = get_live_ips(project_id)
+            self._json(200, result)
+        except Exception as e:
+            self._json(500, {"ok": False, "error": str(e)})
+
+    def _handle_gns3_start_node(self, project_id: str, node_id: str):
+        try:
+            from gns3_service import start_node
+            result = start_node(project_id, node_id)
+            self._json(200, result)
+        except Exception as e:
+            self._json(500, {"ok": False, "error": str(e)})
+
+    def _handle_gns3_config_preview(self):
+        try:
+            length = int(self.headers.get('Content-Length', 0))
+            body   = self.rfile.read(length)
+            data   = json.loads(body)
+            ai_devices = data.get('ai_devices', [])
+            if not ai_devices:
+                self._json(400, {"ok": False, "error": "No AI devices provided"})
+                return
+            from gns3_service import build_config_preview
+            result = build_config_preview(ai_devices)
+            self._json(200, result)
+        except Exception as e:
+            self._json(500, {"ok": False, "error": str(e)})
+
+    def _handle_gns3_apply_config(self):
+        try:
+            length = int(self.headers.get('Content-Length', 0))
+            body   = self.rfile.read(length)
+            data   = json.loads(body)
+
+            project_id     = data.get('project_id', '')
+            device_mapping = data.get('device_mapping', [])
+            ai_devices     = data.get('ai_devices', [])
+            gns3_nodes     = data.get('gns3_nodes', [])
+
+            if not project_id:
+                self._json(400, {"ok": False, "error": "No GNS3 project_id provided"})
+                return
+            if not device_mapping:
+                self._json(400, {"ok": False, "error": "No device mapping provided"})
+                return
+            if not ai_devices:
+                self._json(400, {"ok": False, "error": "No AI devices provided"})
+                return
+            if not gns3_nodes:
+                self._json(400, {"ok": False, "error": "No GNS3 nodes provided"})
+                return
+
+            from gns3_service import apply_configuration
+            result = apply_configuration(project_id, device_mapping, ai_devices, gns3_nodes)
+            self._json(200, result)
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            self._json(500, {"ok": False, "error": str(e)})
+
+    def _handle_gns3_verify(self):
+        try:
+            length = int(self.headers.get('Content-Length', 0))
+            body   = self.rfile.read(length)
+            data   = json.loads(body)
+
+            project_id     = data.get('project_id', '')
+            device_mapping = data.get('device_mapping', [])
+            ai_devices     = data.get('ai_devices', [])
+            gns3_nodes     = data.get('gns3_nodes', [])
+
+            if not project_id:
+                self._json(400, {"ok": False, "error": "No GNS3 project_id provided"})
+                return
+
+            from gns3_service import verify_configuration
+            result = verify_configuration(project_id, device_mapping, ai_devices, gns3_nodes)
+            self._json(200, result)
+        except Exception as e:
+            self._json(500, {"ok": False, "error": str(e)})
+
+    def _handle_gns3_logs(self):
+        try:
+            from gns3_service import get_logs
+            logs = get_logs()
+            self._json(200, {"ok": True, "logs": logs})
+        except Exception as e:
+            self._json(500, {"ok": False, "error": str(e)})
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # SHARED HELPERS
+    # ══════════════════════════════════════════════════════════════════════════
 
     def _json(self, code, obj):
         body = json.dumps(obj).encode()
@@ -244,12 +358,26 @@ Do not include any markdown formatting, code blocks, or explanations. Just outpu
             super().log_message(fmt, *args)
 
 
+class ThreadingTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
+    pass
+
 def start_server():
     socketserver.TCPServer.allow_reuse_address = True
-    with socketserver.TCPServer(("", PORT), Handler) as httpd:
+    with ThreadingTCPServer(("", PORT), Handler) as httpd:
         print(f"  NetConf AI Dashboard -> http://localhost:{PORT}/dashboard.html")
-        print(f"  POST /api/save-manual   -> writes topology/manual.gns3")
-        print(f"  POST /api/delete-manual -> removes topology/manual.gns3")
+        print(f"  -- AI Endpoints ------------------------------------------")
+        print(f"  POST /ai-api/scan-image        -> Gemini vision scan")
+        print(f"  POST /ai-api/modify-topology   -> Gemini text modify")
+        print(f"  POST /ai-api/save-manual        -> write topology/manual.gns3")
+        print(f"  POST /ai-api/delete-manual      -> remove topology/manual.gns3")
+        print(f"  -- GNS3 Endpoints ----------------------------------------")
+        print(f"  GET  /gns3-api/status           -> GNS3 server connection check")
+        print(f"  GET  /gns3-api/projects         -> list GNS3 projects")
+        print(f"  GET  /gns3-api/projects/{{id}}/nodes -> list nodes")
+        print(f"  POST /gns3-api/config-preview   -> generate config preview")
+        print(f"  POST /gns3-api/apply-config     -> apply config to GNS3 devices")
+        print(f"  POST /gns3-api/verify           -> verify applied config")
+        print(f"  GET  /gns3-api/logs             -> execution logs")
         httpd.serve_forever()
 
 

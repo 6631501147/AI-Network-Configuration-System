@@ -2,6 +2,8 @@ import base64
 import json
 import re
 import os
+import warnings
+warnings.filterwarnings("ignore", category=FutureWarning, module="google.generativeai")
 import google.generativeai as genai
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
 from dotenv import load_dotenv
@@ -16,7 +18,13 @@ SAFETY_SETTINGS = {
 PROMPT = """
 You are an expert network engineer analyzing a network topology diagram.
 
-Your task: Carefully examine the image and extract ALL network devices and connections.
+Your task: Carefully examine the image and extract ALL network devices and connections. 
+
+CRITICAL AUTOMATION RULE:
+If an interface is connected but its IP address is not explicitly written in the diagram, you MUST intelligently infer and assign a valid, logical IPv4 address and subnet mask for it. 
+For example, if a PC is 192.168.218.10/24, you must automatically assign the connected router interface an IP on that same subnet (like 192.168.218.1/24) and set the PC's gateway to that router IP. 
+Do NOT leave any active interfaces with empty IPs!
+
 Return ONLY a valid JSON object (no markdown, no code fences) in this exact schema:
 
 {
@@ -29,7 +37,7 @@ Return ONLY a valid JSON object (no markdown, no code fences) in this exact sche
       "y": 300,
       "label": "R1",
       "interfaces": [
-        { "name": "g0/0", "ip": "192.168.1.1/24" }
+        { "name": "g0/0", "ip": "192.168.1.1/24", "gateway": "192.168.1.254" }
       ]
     }
   ],
@@ -80,7 +88,7 @@ def extract_json(text: str) -> dict:
 
 def analyze_image(image_bytes: bytes, mime_type: str) -> dict:
     # Reload .env dynamically so the user doesn't have to restart the server
-    load_dotenv()
+    load_dotenv(override=True)
     api_key = os.environ.get("GEMINI_API_KEY", "")
     if not api_key or api_key == "your_gemini_api_key_here":
         raise ValueError("GEMINI_API_KEY is not configured in .env")
@@ -90,7 +98,7 @@ def analyze_image(image_bytes: bytes, mime_type: str) -> dict:
     b64_image = base64.b64encode(image_bytes).decode("utf-8")
     
     model = genai.GenerativeModel(
-        model_name="gemini-2.5-flash",
+        model_name="gemini-3.6-flash",
         safety_settings=SAFETY_SETTINGS,
         generation_config=genai.GenerationConfig(
             temperature=0.1,
@@ -138,7 +146,7 @@ Rules:
 
 def modify_topology(instruction: str, current_gns3: dict) -> dict:
     """Modify an existing GNS3 topology JSON based on a text instruction."""
-    load_dotenv()
+    load_dotenv(override=True)
     api_key = os.environ.get("GEMINI_API_KEY", "")
     if not api_key or api_key == "your_gemini_api_key_here":
         raise ValueError("GEMINI_API_KEY is not configured in .env")

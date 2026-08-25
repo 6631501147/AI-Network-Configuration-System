@@ -1,85 +1,52 @@
 {
   "version": 1,
-  "saved_at": "2026-05-27T08:36:16.735Z",
+  "saved_at": "2026-08-21T12:51:39.287Z",
   "source_topology": "topology/KOTHANT.gns3",
   "node_positions": {
-    "0957faa6-abb6-435f-a931-6759237391b6": {
-      "x": -153,
-      "y": -233
+    "6acc8ff8-7186-4cf6-8fea-9721b5ae041e": {
+      "x": 570,
+      "y": 180
     },
-    "c1aa127a-d070-42c4-9887-acdfc66ed974": {
-      "x": -385,
-      "y": -259
+    "bd39efbc-d11b-433e-8455-3abf76520c3f": {
+      "x": 550,
+      "y": 340
     },
-    "00faa651-8484-442a-8466-a182213fa972": {
-      "x": -291,
-      "y": -125
+    "a851e617-28ec-4f6d-befa-679f56e093e8": {
+      "x": 540,
+      "y": 530
     },
-    "79e7458c-2cb6-4092-9e7a-28bd0844755e": {
-      "x": -292,
-      "y": 12
+    "e7d88a26-7670-4476-8aa9-946f2bf16171": {
+      "x": 265,
+      "y": 230
     },
-    "edd21733-be99-4d35-b3b6-f0bb92ba8ec5": {
-      "x": -153,
-      "y": -120
+    "3847c62c-679d-4472-b8e2-cd4ba019782c": {
+      "x": 450,
+      "y": 380
     },
-    "642963a3-c7d7-4981-9b3c-348f906bd45b": {
-      "x": -105,
-      "y": 14
+    "687e972a-8321-408c-8f79-721672056673": {
+      "x": 355,
+      "y": 370
     },
-    "45d9132e-2b59-4e05-ada4-e95f53d8b146": {
-      "x": 11,
-      "y": -111
+    "8717f98d-b668-46ff-b3e7-3c374b842892": {
+      "x": 260,
+      "y": 370
     },
-    "399fb888-0eb1-4daa-b44b-652068c10256": {
-      "x": 28,
-      "y": 20
+    "a6ec7de7-f27f-4adf-b53e-a8fa41431d59": {
+      "x": 265,
+      "y": 530
     },
-    "2cb6a249-95c5-4e3e-99c5-293bda15e5e0": {
-      "x": -143,
-      "y": 146
+    "67fc0cd2-6b6b-4c3c-b4a9-5196c8873021": {
+      "x": 710,
+      "y": 440
     },
-    "c9c1a8ce-d009-443e-b048-7479de01a3fe": {
-      "x": -139,
-      "y": 274
+    "7db8d90f-f797-487f-990b-eb0f2c6a7aa3": {
+      "x": 710,
+      "y": 650
     },
-    "a7c7f428-e94a-4453-bdc7-2f70f05ebdf4": {
-      "x": -385,
-      "y": -446
-    },
-    "b5f63f63-757a-4b1d-8188-73fda7f025c0": {
-      "x": -153,
-      "y": -329
-    },
-    "7d8aa9fd-8c40-48b7-a742-6d60afc6e7bb": {
-      "x": -154,
-      "y": -439
+    "e86a89fd-ec22-4a9c-8b12-14677e5dfb3b": {
+      "x": 460,
+      "y": 610
     }
   },
-  "custom_links": [
-    {
-      "id": "custom-1",
-      "source_id": "79e7458c-2cb6-4092-9e7a-28bd0844755e",
-      "source_name": "PC2",
-      "source_type": "PC",
-      "target_id": "c9c1a8ce-d009-443e-b048-7479de01a3fe",
-      "target_name": "PC5",
-      "target_type": "PC",
-      "source_port": "eth0",
-      "target_port": "eth0",
-      "status": "FAIL"
-    },
-    {
-      "id": "custom-2",
-      "source_id": "79e7458c-2cb6-4092-9e7a-28bd0844755e",
-      "source_name": "PC2",
-      "source_type": "PC",
-      "target_id": "2cb6a249-95c5-4e3e-99c5-293bda15e5e0",
-      "target_name": "R5",
-      "target_type": "Router",
-      "source_port": "eth0",
-      "target_port": "eth0",
-      "status": "SUCCESS"
-    }
-  ]
+  "custom_links": []
 }

@@ -47,7 +47,7 @@
                         </div>
                     </div>
                     <div class="stat-value" id="total-pcs">0</div>
-                    <div class="stat-subtitle" id="success-pcs">0 Detected</div>
+                    <div class="stat-subtitle" id="success-pcs">0 Configured</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-header">
@@ -57,37 +57,7 @@
                         </div>
                     </div>
                     <div class="stat-value" id="total-routers">0</div>
-                    <div class="stat-subtitle" id="success-routers">0 Detected</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-header">
-                        <h3>Total Switches</h3>
-                        <div class="stat-icon-wrapper" style="background:rgba(20,184,166,0.15);box-shadow:0 0 20px rgba(20,184,166,0.2)">
-                            <i data-lucide="git-branch" class="stat-icon" style="color:#14b8a6"></i>
-                        </div>
-                    </div>
-                    <div class="stat-value" id="total-switches">0</div>
-                    <div class="stat-subtitle" id="success-switches">0 Detected</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-header">
-                        <h3>Firewalls</h3>
-                        <div class="stat-icon-wrapper" style="background:rgba(239,68,68,0.15);box-shadow:0 0 20px rgba(239,68,68,0.2)">
-                            <i data-lucide="shield" class="stat-icon" style="color:#ef4444"></i>
-                        </div>
-                    </div>
-                    <div class="stat-value" id="total-firewalls">0</div>
-                    <div class="stat-subtitle" id="success-firewalls">0 Detected</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-header">
-                        <h3>Servers</h3>
-                        <div class="stat-icon-wrapper" style="background:rgba(245,158,11,0.15);box-shadow:0 0 20px rgba(245,158,11,0.2)">
-                            <i data-lucide="server" class="stat-icon" style="color:#f59e0b"></i>
-                        </div>
-                    </div>
-                    <div class="stat-value" id="total-servers">0</div>
-                    <div class="stat-subtitle" id="success-servers">0 Detected</div>
+                    <div class="stat-subtitle" id="success-routers">0 Configured</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-header">
@@ -113,22 +83,6 @@
                             </div>
                         </div>
                         <div class="topology-controls">
-                            <!-- Zoom controls -->
-                            <button id="btn-zoom-in" class="control-btn" title="Zoom In">
-                                <i data-lucide="zoom-in"></i> Zoom In
-                            </button>
-                            <button id="btn-zoom-out" class="control-btn" title="Zoom Out">
-                                <i data-lucide="zoom-out"></i> Zoom Out
-                            </button>
-                            <button id="btn-reset-view" class="control-btn" title="Reset View">
-                                <i data-lucide="maximize-2"></i> Fit
-                            </button>
-                            <div class="control-divider"></div>
-                            <!-- Connect rope tool -->
-                            <button id="btn-connect" class="control-btn connect-btn" title="Draw Connection">
-                                <i data-lucide="cable"></i> Connect
-                            </button>
-                            <div class="control-divider"></div>
                             <!-- Toggle labels / regions -->
                             <button id="btn-labels" class="control-btn active" title="Toggle Port Labels">
                                 <i data-lucide="tags"></i> Ports
@@ -137,29 +91,11 @@
                                 <i data-lucide="map-pin"></i> Regions
                             </button>
                             <div class="control-divider"></div>
-                            <!-- Topology Selector -->
-                            <select id="topology-selector" class="control-btn" style="background: rgba(8,12,24,0.7); outline: none; border-color: rgba(255,255,255,0.1); cursor: pointer;" title="Select active topology file">
-                                <option value="KOTHANT.gns3">Loading...</option>
-                            </select>
-                            <button id="btn-download-gns3" class="control-btn" style="border-color: rgba(56,189,248,.4); color: var(--accent-blue);" title="Download current .gns3 file">
-                                <i data-lucide="download"></i> Download .gns3
-                            </button>
-                            <div class="control-divider"></div>
                             <!-- AI Upload -->
                             <button id="btn-upload" class="control-btn" style="border-color: rgba(168,85,247,.4); color: var(--accent-purple);" title="Scan topology image with Gemini AI">
                                 <i data-lucide="sparkles"></i> AI Scan Image
                             </button>
                             <input type="file" id="file-upload" accept="image/*" style="display:none">
-                            <div class="control-divider"></div>
-                            <!-- Save / Reset config -->
-                            <button id="btn-save" class="control-btn save-btn" title="Save manual config to manual.gns3">
-                                <i data-lucide="save"></i> Save Config
-                            </button>
-                            <button id="btn-restore" class="control-btn restore-btn" title="Reset to KOTHANT.gns3 default">
-                                <i data-lucide="rotate-ccw"></i> Reset Default
-                            </button>
-                            <!-- Save status badge -->
-                            <span id="save-status" class="save-status-badge" style="display:none"></span>
                         </div>
                     </div>
 
@@ -168,23 +104,17 @@
                         <div class="topology-overlay" id="topology-overlay">
                             Click or hover devices &amp; links to inspect
                         </div>
-                        <!-- Connect mode banner (top-center) -->
-                        <div class="connect-banner" id="connect-banner">
-                            <i data-lucide="cable" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:6px;"></i> Connect Mode: Click SOURCE device
-                        </div>
                         <!-- SVG Canvas -->
                         <svg class="topology-svg" id="topology-svg"></svg>
                     </div>
 
                     <div class="topology-legend">
-                        <div class="legend-item"><span class="legend-dot pc"></span> VPC / PC</div>
-                        <div class="legend-item"><span class="legend-dot router"></span> Router</div>
-                        <div class="legend-item"><span class="legend-dot" style="background:#14b8a6"></span> Switch</div>
-                        <div class="legend-item"><span class="legend-dot" style="background:#ef4444"></span> Firewall</div>
-                        <div class="legend-item"><span class="legend-dot" style="background:#f59e0b"></span> Server</div>
-                        <div class="legend-item"><span class="legend-dot" style="background:#38bdf8"></span> Cloud</div>
+                        <div class="legend-item"><span class="legend-dot pc"></span> VPC Node</div>
+                        <div class="legend-item"><span class="legend-dot router"></span> Router Node</div>
                         <div class="legend-item"><span class="legend-line active"></span> Active Link</div>
-                        <div class="legend-item"><span class="legend-tip">⚙</span> Drag · Zoom</div>
+                        <div class="legend-item"><span class="legend-line success"></span> New (Success)</div>
+                        <div class="legend-item"><span class="legend-line fail"></span> New (Failed)</div>
+                        <div class="legend-item"><span class="legend-tip">⚙</span> Drag nodes · Scroll to zoom</div>
                     </div>
                 </div>
             </section>
@@ -205,41 +135,19 @@
                     </div>
                     <div class="device-grid" id="router-grid"></div>
                 </section>
-                <section class="device-section">
-                    <div class="section-title-bar">
-                        <i data-lucide="git-branch" class="title-bar-icon" style="color:#14b8a6"></i>
-                        <h2>Switches</h2>
-                    </div>
-                    <div class="device-grid" id="switch-grid"></div>
-                </section>
-                <section class="device-section">
-                    <div class="section-title-bar">
-                        <i data-lucide="shield" class="title-bar-icon" style="color:#ef4444"></i>
-                        <h2>Firewalls</h2>
-                    </div>
-                    <div class="device-grid" id="firewall-grid"></div>
-                </section>
-                <section class="device-section">
-                    <div class="section-title-bar">
-                        <i data-lucide="server" class="title-bar-icon" style="color:#f59e0b"></i>
-                        <h2>Servers</h2>
-                    </div>
-                    <div class="device-grid" id="server-grid"></div>
-                </section>
-                <section class="device-section">
-                    <div class="section-title-bar">
-                        <i data-lucide="cloud" class="title-bar-icon" style="color:#38bdf8"></i>
-                        <h2>Cloud / Internet</h2>
-                    </div>
-                    <div class="device-grid" id="cloud-grid"></div>
-                </section>
             </div>
+
 
             <!-- Connectivity Matrix -->
             <section class="ping-section">
                 <div class="section-title-bar">
-                    <i data-lucide="arrow-left-right" class="title-bar-icon"></i>
-                    <h2>Connectivity Matrix (Ping Tests)</h2>
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <i data-lucide="arrow-left-right" class="title-bar-icon"></i>
+                        <h2>Connectivity Matrix (Ping Tests)</h2>
+                    </div>
+                    <button class="control-btn" id="btn-refresh-ips" onclick="fetchLiveIPs()" style="margin-left: auto; font-size: 0.85rem; padding: 0.4rem 0.8rem; border-color: rgba(59, 130, 246, 0.4); color: #60a5fa;">
+                        <i data-lucide="refresh-cw"></i> Refresh IPs
+                    </button>
                 </div>
                 <div class="table-container">
                     <table id="ping-table">
@@ -256,27 +164,146 @@
                 </div>
             </section>
 
-            <!-- Interactive Terminal -->
-            <section class="terminal-section">
-                <div class="section-title-bar">
-                    <i data-lucide="terminal" class="title-bar-icon"></i>
-                    <h2>Interactive CLI</h2>
-                </div>
-                <div class="terminal-container" id="terminal-container" onclick="document.getElementById('terminal-input').focus()">
-                    <div class="terminal-header">
-                        <div class="term-dots"><span class="red"></span><span class="yellow"></span><span class="green"></span></div>
-                        <div class="term-title">router_cli ~ admin</div>
+            <!-- ═══════════════════════════════════════════════════════════════
+                 GNS3 CONTROL PANEL
+                 ═══════════════════════════════════════════════════════════════ -->
+            <section class="gns3-section" id="gns3-section">
+                <div class="gns3-card">
+
+                    <!-- Section Header -->
+                    <div class="gns3-header">
+                        <div class="title-with-icon">
+                            <i data-lucide="server" class="section-icon"></i>
+                            <div>
+                                <h2>GNS3 Live Configuration</h2>
+                                <p class="section-subtitle">Apply AI-generated config directly to your running GNS3 devices</p>
+                            </div>
+                        </div>
+                        <button id="btn-gns3-reconnect" class="control-btn gns3-reconnect-btn" onclick="gns3CheckStatus()" title="Reconnect to GNS3">
+                            <i data-lucide="refresh-cw"></i> Reconnect
+                        </button>
                     </div>
-                    <div class="terminal-body" id="terminal-output">
-                        <div class="term-line">Welcome to NetConf AI Router CLI.</div>
-                        <div class="term-line">Type <span class="term-highlight">ping &lt;ip/hostname&gt;</span> to test connectivity.</div>
-                    </div>
-                    <div class="terminal-input-row">
-                        <span class="term-prompt" id="term-prompt-active">R1&gt;</span>
-                        <input type="text" id="terminal-input" class="terminal-input" autocomplete="off" spellcheck="false" autofocus>
-                    </div>
-                </div>
+
+                    <div class="gns3-body">
+
+                        <!-- ── Row 1: Status + Project Selector ── -->
+                        <div class="gns3-row">
+
+                            <!-- Connection Status Card -->
+                            <div class="gns3-status-card" id="gns3-status-card">
+                                <div class="gns3-status-header">
+                                    <i data-lucide="wifi" class="gns3-status-icon"></i>
+                                    GNS3 Server
+                                </div>
+                                <div class="gns3-status-body">
+                                    <span class="gns3-dot" id="gns3-status-dot"></span>
+                                    <span id="gns3-status-text">Checking…</span>
+                                </div>
+                                <div class="gns3-status-url" id="gns3-status-url"></div>
+                            </div>
+
+                            <!-- Project Selector Card -->
+                            <div class="gns3-project-card">
+                                <div class="gns3-card-label">
+                                    <i data-lucide="folder-open"></i> GNS3 Project
+                                </div>
+                                <select id="gns3-project-select" class="gns3-select" onchange="gns3OnProjectChange(this.value)">
+                                    <option value="">— Select a project —</option>
+                                </select>
+                            </div>
+
+                        </div>
+
+                        <!-- ── Device Nodes Status ── -->
+                        <div class="gns3-nodes-card" id="gns3-nodes-card" style="display:none;">
+                            <div class="gns3-card-label">
+                                <i data-lucide="cpu"></i> Devices in Project
+                            </div>
+                            <div id="gns3-nodes-list" class="gns3-nodes-list"></div>
+                        </div>
+
+                        <!-- ── Device Mapping Table ── -->
+                        <div class="gns3-mapping-card" id="gns3-mapping-card" style="display:none;">
+                            <div class="gns3-card-label">
+                                <i data-lucide="git-merge"></i> Device Mapping
+                                <span class="gns3-mapping-hint">AI device → GNS3 device</span>
+                            </div>
+                            <div class="gns3-mapping-info" id="gns3-mapping-info"></div>
+                            <table class="gns3-mapping-table" id="gns3-mapping-table">
+                                <thead>
+                                    <tr>
+                                        <th>AI Device</th>
+                                        <th>Type</th>
+                                        <th>→</th>
+                                        <th>GNS3 Device</th>
+                                        <th>Match</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="gns3-mapping-tbody"></tbody>
+                            </table>
+                        </div>
+
+                        <!-- ── Config Preview ── -->
+                        <div class="gns3-preview-card" id="gns3-preview-card" style="display:none;">
+                            <div class="gns3-preview-header">
+                                <div class="gns3-card-label">
+                                    <i data-lucide="file-code"></i> Configuration Preview
+                                </div>
+                                <button class="gns3-preview-toggle" id="gns3-preview-toggle" onclick="gns3TogglePreview()">
+                                    <i data-lucide="chevron-down"></i> Show/Hide
+                                </button>
+                            </div>
+                            <div id="gns3-preview-warnings" class="gns3-preview-warnings"></div>
+                            <div id="gns3-preview-body" class="gns3-preview-body"></div>
+                        </div>
+
+                        <!-- ── Action Buttons ── -->
+                        <div class="gns3-actions" id="gns3-actions" style="display:none;">
+                            <button id="btn-gns3-preview" class="gns3-btn gns3-btn-secondary" onclick="gns3ShowPreview()">
+                                <i data-lucide="eye"></i> Preview Config
+                            </button>
+                            <button id="btn-gns3-apply" class="gns3-btn gns3-btn-primary" onclick="gns3ApplyConfig()">
+                                <i data-lucide="zap"></i> Apply Configuration to GNS3
+                            </button>
+                            <button id="btn-gns3-verify" class="gns3-btn gns3-btn-verify" onclick="gns3VerifyConfig()" style="display:none;">
+                                <i data-lucide="shield-check"></i> Verify Configuration
+                            </button>
+                        </div>
+
+                        <!-- ── Apply Progress ── -->
+                        <div class="gns3-progress-card" id="gns3-progress-card" style="display:none;">
+                            <div class="gns3-card-label">
+                                <i data-lucide="loader"></i> Applying Configuration…
+                            </div>
+                            <div id="gns3-progress-list" class="gns3-progress-list"></div>
+                        </div>
+
+                        <!-- ── Verification Results ── -->
+                        <div class="gns3-verify-card" id="gns3-verify-card" style="display:none;">
+                            <div class="gns3-card-label">
+                                <i data-lucide="shield-check"></i> Verification Results
+                            </div>
+                            <div id="gns3-verify-list" class="gns3-verify-list"></div>
+                        </div>
+
+                        <!-- ── Execution Log ── -->
+                        <div class="gns3-log-card">
+                            <div class="gns3-log-header">
+                                <div class="gns3-card-label">
+                                    <i data-lucide="scroll-text"></i> Execution Log
+                                </div>
+                                <button class="gns3-log-clear" onclick="gns3ClearLog()">
+                                    <i data-lucide="trash-2"></i> Clear
+                                </button>
+                            </div>
+                            <div id="gns3-log" class="gns3-log"></div>
+                        </div>
+
+                    </div><!-- /gns3-body -->
+                </div><!-- /gns3-card -->
             </section>
+
+
         </main>
     </div>
 
@@ -384,6 +411,7 @@
         </div>
     </div>
 
-    <script src="dashboard.js?v=2"></script>
+    <script src="dashboard.js"></script>
+
 </body>
 </html>

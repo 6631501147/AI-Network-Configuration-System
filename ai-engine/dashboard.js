@@ -35,10 +35,56 @@ let connectMode = false;
 let connectPendingNode = null;
 
 // Helper to generate a predictable IP from a device name
+window.liveIPs = {};
+
+async function fetchLiveIPs() {
+    if (typeof gns3ProjectId === 'undefined' || !gns3ProjectId) {
+        showToast('fail', 'No project selected', 'Please select a GNS3 project first to fetch live IPs.');
+        return;
+    }
+    
+    const btn = document.getElementById('btn-refresh-ips');
+    if (btn) {
+        btn.innerHTML = '<i data-lucide="loader" class="spin"></i> Refreshing...';
+        btn.disabled = true;
+        if (typeof lucide !== 'undefined') lucide.createIcons({ nodes: [btn] });
+    }
+    
+    try {
+        const response = await fetch(`/gns3-api/projects/${gns3ProjectId}/live-ips`);
+        const data = await response.json();
+        if (data.ok && data.live_ips) {
+            window.liveIPs = data.live_ips;
+            showToast('success', 'IPs Synced', 'Live IP addresses synchronized from GNS3.');
+            
+            // Re-render ping table and layout
+            if (typeof currentGns3 !== 'undefined' && currentGns3) {
+                parseAndRender(currentGns3);
+            }
+        } else {
+            showToast('fail', 'Sync Failed', data.error || 'Failed to fetch live IPs');
+        }
+    } catch (e) {
+        showToast('fail', 'Sync Error', e.message);
+    } finally {
+        if (btn) {
+            btn.innerHTML = '<i data-lucide="refresh-cw"></i> Refresh IPs';
+            btn.disabled = false;
+            if (typeof lucide !== 'undefined') lucide.createIcons({ nodes: [btn] });
+        }
+    }
+}
+
+// Helper to generate a predictable IP from a device name
 function getIP(name) {
-    let hash = 0;
-    for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-    return `192.168.${Math.abs(hash % 255)}.${Math.abs((hash >> 8) % 254) + 1}`;
+    if (window.liveIPs && window.liveIPs.hasOwnProperty(name)) {
+        const ip = window.liveIPs[name];
+        if (!ip || ip === "unassigned") return "No IP";
+        return ip.split('/')[0];
+    }
+    
+    // If not fetched yet
+    return "Pending...";
 }
 
 // ==========================================
@@ -62,8 +108,13 @@ function parseAndRender(data) {
     const rawLinks = data.topology.links || [];
     const drawings = data.topology.drawings || [];
 
-    let pcs = [], routers = [], switches = [], firewalls = [], servers = [], clouds = [];
+    let pcs = [], routers = [];
     const nodeMap = {};
+    
+    // Clear global registries to prevent stale devices from previous topologies
+    for (let key in nodeRegistry) delete nodeRegistry[key];
+    for (let key in nodePositions) delete nodePositions[key];
+    allLinks = [];
 
     rawNodes.sort((a, b) => {
         const an = parseInt(a.name.replace(/\D/g, '') || 0);
@@ -72,32 +123,20 @@ function parseAndRender(data) {
     });
 
     for (const node of rawNodes) {
-        const nm = node.name.toLowerCase();
-        const nt = (node.node_type || '').toLowerCase();
-        let type = 'Router';
-        if (nm.startsWith('pc') || nt === 'vpcs') type = 'PC';
-        else if (nm.startsWith('sw') || nm.startsWith('switch') || nt === 'ethernet_switch') type = 'Switch';
-        else if (nm.startsWith('fw') || nm.startsWith('firewall') || nm.startsWith('asa') || nm.startsWith('pf')) type = 'Firewall';
-        else if (nm.startsWith('srv') || nm.startsWith('server') || nm.startsWith('web') || nm.startsWith('dns') || nm.startsWith('dhcp')) type = 'Server';
-        else if (nm.startsWith('cloud') || nm.startsWith('internet') || nm.startsWith('nat') || nt === 'cloud') type = 'Cloud';
-
+        const isPC = node.name.startsWith('PC') || node.node_type === 'vpcs';
         const device = {
             id: node.node_id, name: node.name, status: 'SUCCESS',
-            type,
+            type: isPC ? 'PC' : 'Router',
             x: node.x, y: node.y,
             properties: node.properties || {}
         };
         nodeMap[node.node_id] = device;
         nodeRegistry[node.node_id] = device;
+        // store original GNS3 coords so Reset Default can fully restore them
         device.origX = node.x;
         device.origY = node.y;
         nodePositions[node.node_id] = { x: node.x, y: node.y };
-        if (type === 'PC') pcs.push(device);
-        else if (type === 'Switch') switches.push(device);
-        else if (type === 'Firewall') firewalls.push(device);
-        else if (type === 'Server') servers.push(device);
-        else if (type === 'Cloud') clouds.push(device);
-        else routers.push(device);
+        if (isPC) pcs.push(device); else routers.push(device);
     }
 
     allLinks = [];
@@ -113,7 +152,8 @@ function parseAndRender(data) {
         }
     }
 
-    const pings = allLinks.map((lk) => {
+    // Generate dynamic ping tests based on links
+    const pings = allLinks.map((lk, i) => {
         const srcName = lk.source?.name || 'Unknown';
         const tgtName = lk.target?.name || 'Unknown';
         const tgtIP   = getIP(tgtName);
@@ -126,14 +166,15 @@ function parseAndRender(data) {
         };
     });
 
-    window._baseRenderArgs = { ts: "Topology Synced", pcs, routers, switches, firewalls, servers, clouds, links: allLinks, drawings, pings };
-    renderDashboard("Topology Synced", pcs, routers, switches, firewalls, servers, clouds, allLinks, drawings, pings);
+    // Cache base render args for Reset Default
+    window._baseRenderArgs = { ts: "Topology Synced", pcs, routers, links: allLinks, drawings, pings };
+    renderDashboard("Topology Synced", pcs, routers, allLinks, drawings, pings);
 }
 
 // ==========================================
 // RENDER DASHBOARD UI
 // ==========================================
-function renderDashboard(ts, pcs, routers, switches, firewalls, servers, clouds, links, drawings, pings) {
+function renderDashboard(ts, pcs, routers, links, drawings, pings) {
     document.getElementById('report-timestamp').innerHTML =
         `<i data-lucide="clock" class="inline-icon"></i> Status: ${ts}`;
 
@@ -142,37 +183,19 @@ function renderDashboard(ts, pcs, routers, switches, firewalls, servers, clouds,
     badge.style.cssText = 'background:rgba(16,185,129,0.1);color:var(--accent-green);border-color:rgba(16,185,129,0.2)';
 
     document.getElementById('total-pcs').textContent = pcs.length;
-    document.getElementById('success-pcs').textContent = `${pcs.length} Detected`;
+    document.getElementById('success-pcs').textContent = `${pcs.filter(p => p.status==='SUCCESS').length} Detected`;
     document.getElementById('total-routers').textContent = routers.length;
-    document.getElementById('success-routers').textContent = `${routers.length} Detected`;
-    document.getElementById('total-switches').textContent = switches.length;
-    document.getElementById('success-switches').textContent = `${switches.length} Detected`;
-    document.getElementById('total-firewalls').textContent = firewalls.length;
-    document.getElementById('success-firewalls').textContent = `${firewalls.length} Detected`;
-    document.getElementById('total-servers').textContent = servers.length;
-    document.getElementById('success-servers').textContent = `${servers.length} Detected`;
+    document.getElementById('success-routers').textContent = `${routers.filter(r => r.status==='SUCCESS').length} Detected`;
     document.getElementById('total-pings').textContent = pings.length;
     document.getElementById('success-pings').textContent = `${pings.filter(p => p.status==='SUCCESS').length} Successful`;
 
-    const ICON_MAP = {
-        'PC':       { cls: 'pc-icon',       icon: 'monitor',    color: '' },
-        'Router':   { cls: 'router-icon',   icon: 'router',     color: '' },
-        'Switch':   { cls: 'switch-icon',   icon: 'git-branch', color: '#14b8a6' },
-        'Firewall': { cls: 'firewall-icon', icon: 'shield',     color: '#ef4444' },
-        'Server':   { cls: 'server-icon',   icon: 'server',     color: '#f59e0b' },
-        'Cloud':    { cls: 'cloud-icon',    icon: 'cloud',      color: '#38bdf8' },
-    };
-    const mkCard = (dev) => {
-        const t = ICON_MAP[dev.type] || ICON_MAP['Router'];
-        const styleAttr = t.color ? `style="background:${t.color}22;border-color:${t.color}44"` : '';
-        const iconStyle = t.color ? `style="color:${t.color}"` : '';
-        return `
+    const mkCard = (dev, type) => `
         <div class="device-card" id="card-${dev.id}"
              onmouseenter="onCardHover('${dev.id}')"
              onmouseleave="onCardLeave('${dev.id}')"
              onclick="onCardClick('${dev.id}')">
-            <div class="device-icon-wrapper ${t.cls}" ${styleAttr}>
-                <i data-lucide="${t.icon}" ${iconStyle}></i>
+            <div class="device-icon-wrapper ${type==='PC'?'pc-icon':'router-icon'}">
+                <i data-lucide="${type==='PC'?'monitor':'router'}"></i>
             </div>
             <div class="device-details">
                 <div class="device-name">${dev.name}</div>
@@ -182,20 +205,11 @@ function renderDashboard(ts, pcs, routers, switches, firewalls, servers, clouds,
                 <span class="status-dot-inner"></span>${dev.status}
             </div>
         </div>`;
-    };
 
     document.getElementById('pc-grid').innerHTML =
-        pcs.length ? pcs.map(d => mkCard(d)).join('') : '<div class="loading">No PCs Found...</div>';
+        pcs.length ? pcs.map(p => mkCard(p,'PC')).join('') : '<div class="loading">No PCs Found...</div>';
     document.getElementById('router-grid').innerHTML =
-        routers.length ? routers.map(d => mkCard(d)).join('') : '<div class="loading">No Routers Found...</div>';
-    document.getElementById('switch-grid').innerHTML =
-        switches.length ? switches.map(d => mkCard(d)).join('') : '<div class="loading">No Switches Found...</div>';
-    document.getElementById('firewall-grid').innerHTML =
-        firewalls.length ? firewalls.map(d => mkCard(d)).join('') : '<div class="loading">No Firewalls Found...</div>';
-    document.getElementById('server-grid').innerHTML =
-        servers.length ? servers.map(d => mkCard(d)).join('') : '<div class="loading">No Servers Found...</div>';
-    document.getElementById('cloud-grid').innerHTML =
-        clouds.length ? clouds.map(d => mkCard(d)).join('') : '<div class="loading">No Cloud Nodes Found...</div>';
+        routers.length ? routers.map(r => mkCard(r,'Router')).join('') : '<div class="loading">No Routers Found...</div>';
 
     const mkRow = p => `
         <tr>
@@ -208,8 +222,7 @@ function renderDashboard(ts, pcs, routers, switches, firewalls, servers, clouds,
     document.getElementById('ping-body').innerHTML =
         pings.length ? pings.map(mkRow).join('') : '<tr><td colspan="4" class="loading">No Ping Data...</td></tr>';
 
-    const allDevices = [...pcs, ...routers, ...switches, ...firewalls, ...servers, ...clouds];
-    renderTopologyGraph(allDevices, links, drawings);
+    renderTopologyGraph(pcs.concat(routers), links, drawings);
     lucide.createIcons();
 }
 
@@ -281,20 +294,26 @@ function renderLink(link, linksGrp, portsGrp) {
     g.setAttribute('data-source', link.source.id);
     g.setAttribute('data-target', link.target.id);
     g.setAttribute('data-link-id', link.id);
-    if (link.custom) g.classList.add(link.status === 'SUCCESS' ? 'link-custom-success' : 'link-custom-fail');
+    
+    let displayStatus = link.status || 'SUCCESS';
+    
+    if (link.custom) {
+        g.classList.add(displayStatus === 'SUCCESS' ? 'link-custom-success' : 'link-custom-fail');
+    }
 
     g.addEventListener('mouseenter', () => {
         if (lockedNodeId) return;
-        showOverlay(`
+        let html = `
             <div class="overlay-title"><i data-lucide="cable" class="overlay-icon"></i> Link</div>
             <div class="overlay-content">
                 <strong>From:</strong> ${link.source.name} <span class="port-badge">${link.sourcePort||'—'}</span><br/>
                 <strong>To:</strong> ${link.target.name} <span class="port-badge">${link.targetPort||'—'}</span><br/>
                 <strong>Status:</strong>
-                <span style="color:${link.status==='SUCCESS'?'var(--accent-green)':'var(--accent-red)'}">
-                    ${link.status==='SUCCESS'?'✓ Active':'✗ Failed'}
+                <span style="color:${displayStatus==='SUCCESS'?'var(--accent-green)':'var(--accent-red)'}">
+                    ${displayStatus==='SUCCESS'?'✓ Active':'✗ Failed'}
                 </span>
-            </div>`);
+            </div>`;
+        showOverlay(html);
         applyLinkHighlight(link.id, link.source.id, link.target.id);
     });
     g.addEventListener('mouseleave', () => { if (!lockedNodeId) clearHighlightState(); });
@@ -322,40 +341,39 @@ function renderLink(link, linksGrp, portsGrp) {
 }
 
 function renderNode(node, nodesGrp) {
-    const ICON_MAP = {
-        'PC':       { cls: 'pc-node',       icon: 'monitor',    color: null },
-        'Router':   { cls: 'router-node',   icon: 'router',     color: null },
-        'Switch':   { cls: 'switch-node',   icon: 'git-branch', color: '#14b8a6' },
-        'Firewall': { cls: 'firewall-node', icon: 'shield',     color: '#ef4444' },
-        'Server':   { cls: 'server-node',   icon: 'server',     color: '#f59e0b' },
-        'Cloud':    { cls: 'cloud-node',    icon: 'cloud',      color: '#38bdf8' },
-    };
-    const t = ICON_MAP[node.type] || ICON_MAP['Router'];
+    const isPC = node.type === 'PC';
     const pos = nodePositions[node.id] || {x:node.x, y:node.y};
-    const g = mkSVGGroup(`node-group ${t.cls}`, nodesGrp);
+    const g = mkSVGGroup(`node-group ${isPC?'pc-node':'router-node'}`, nodesGrp);
     g.setAttribute('id', `node-${node.id}`);
     g.setAttribute('data-node-id', node.id);
     g.setAttribute('data-node-name', node.name);
     g.setAttribute('data-node-type', node.type);
     g.setAttribute('transform', `translate(${pos.x},${pos.y})`);
 
+    // --- Hover (only if nothing is locked) ---
     g.addEventListener('mouseenter', () => {
         if (lockedNodeId && lockedNodeId !== node.id) return;
-        updateNodeOverlay(node, node.type === 'PC');
+        updateNodeOverlay(node, isPC);
         if (!lockedNodeId) applyNodeHighlight(node.id);
     });
     g.addEventListener('mouseleave', () => {
         if (!lockedNodeId) clearHighlightState();
     });
 
+    // --- Click: lock/unlock or connect ---
     g.addEventListener('click', e => {
         e.stopPropagation();
-        if (dragState?.hasMoved) return;
-        if (connectMode) { handleConnectClick(node); return; }
+        if (dragState?.hasMoved) return; // ignore click after drag
+
+        if (connectMode) {
+            handleConnectClick(node);
+            return;
+        }
         if (lockedNodeId === node.id) unlockSelection();
-        else lockSelection(node.id, node, node.type === 'PC');
+        else lockSelection(node.id, node, isPC);
     });
 
+    // --- Drag start ---
     g.addEventListener('mousedown', e => {
         if (e.button !== 0 || connectMode) return;
         e.stopPropagation();
@@ -371,17 +389,24 @@ function renderNode(node, nodesGrp) {
     });
 
     const pulse  = mkSVGElem('circle', {r:30, class:'node-pulse'});
-    const base   = mkSVGElem('circle', {r:22, class:'node-circle-base'});
+    const base   = mkSVGElem('circle', {r:22, class:'node-circle-base node-bg'});
     const glow   = mkSVGElem('circle', {r:22, class:'node-circle-glow'});
     const fo = mkSVG('foreignObject');
     fo.setAttribute('x','-12'); fo.setAttribute('y','-12');
     fo.setAttribute('width','24'); fo.setAttribute('height','24');
-    const iconStyle = t.color ? `color:${t.color}` : '';
-    fo.innerHTML = `<div class="node-icon-inner" style="${iconStyle}"><i data-lucide="${t.icon}"></i></div>`;
+    
+    // Pick icon based on type (Router, Switch, PC, Server, Firewall, Cloud)
+    let iconName = 'router';
+    if (node.type === 'PC') iconName = 'monitor';
+    else if (node.type === 'Switch') iconName = 'git-merge';
+    else if (node.type === 'Server') iconName = 'server';
+    else if (node.type === 'Firewall') iconName = 'shield';
+    else if (node.type === 'Cloud') iconName = 'cloud';
+    
+    fo.innerHTML = `<div class="node-icon-inner ${iconName}"><i data-lucide="${iconName}"></i></div>`;
     const label  = mkSVGElem('text', {y:38, class:'node-label-text', 'text-anchor':'middle'});
     label.textContent = node.name;
     const beacon = mkSVGElem('circle', {r:5.5, cx:16, cy:-16, class:'node-status-badge'});
-    if (t.color) base.setAttribute('style', `fill:${t.color}22;stroke:${t.color}`);
 
     g.appendChild(pulse); g.appendChild(base); g.appendChild(glow);
     g.appendChild(fo);    g.appendChild(label); g.appendChild(beacon);
@@ -566,7 +591,9 @@ function showOverlay(html) {
 function updateNodeOverlay(node, isPC) {
     const pos = nodePositions[node.id] || node;
     const isLocked = lockedNodeId === node.id;
-    showOverlay(`
+    let ipDisplay = `<br/><strong>IP Address:</strong> <span style="color:var(--accent-blue)">${getIP(node.name)}</span>`;
+    
+    let html = `
         <div class="overlay-title">
             <i data-lucide="${isPC?'monitor':'router'}" class="overlay-icon"></i>
             ${node.name}
@@ -575,9 +602,11 @@ function updateNodeOverlay(node, isPC) {
         <div class="overlay-content">
             <strong>Type:</strong> ${isPC?'Virtual PC (vpcs)':'Router (dynamips)'}<br/>
             <strong>Position:</strong> X: ${Math.round(pos.x)}, Y: ${Math.round(pos.y)}<br/>
-            <strong>Platform:</strong> ${node.properties?.platform||'N/A'}<br/>
+            <strong>Platform:</strong> ${node.properties?.platform||'N/A'}${ipDisplay}<br/>
             <strong>Status:</strong> <span style="color:var(--accent-green)">Configured & Synced</span>
-        </div>`);
+        </div>`;
+    
+    showOverlay(html);
     document.querySelectorAll('.device-card').forEach(c => c.classList.remove('focused'));
     document.getElementById(`card-${node.id}`)?.classList.add('focused');
 }
@@ -674,15 +703,17 @@ function createNewConnection(srcNode, tgtNode) {
     // PC↔PC = FAIL (no layer-3 routing); anything else = SUCCESS
     const bothPC = srcNode.type==='PC' && tgtNode.type==='PC';
     const status = bothPC ? 'FAIL' : 'SUCCESS';
-    const id = `custom-${++customLinkCounter}`;
+    let customId = 'link-custom-' + (++customLinkCounter);
 
     const newLink = {
-        id, source: {...srcNode}, target: {...tgtNode},
-        sourcePort: 'eth0', targetPort: 'eth0',
-        status, custom: true
+        id: customId,
+        source: srcNode, target: tgtNode,
+        sourcePort: 'EthX', targetPort: 'EthY',
+        status: 'SUCCESS', custom: true
     };
     customLinks.push(newLink);
-
+    allLinks.push(newLink);
+    
     // Draw new rope on SVG
     const linksGrp = document.querySelector('.links-group');
     const portsGrp = document.querySelector('.ports-group');
@@ -842,6 +873,7 @@ function setupControls() {
             nodeRegistry = {};
             nodePositions = {};
             
+            currentGns3 = data; // MUST update global state here!
             parseAndRender(data);
             showToast('success', 'Topology Loaded', `Loaded ${file}`);
         } catch (err) {
@@ -868,10 +900,16 @@ function setupControls() {
 // ==========================================
 // TOPOLOGY SELECTOR
 // ==========================================
-async function populateTopologies(autoSelect = null) {
+async function populateTopologies(selected = 'scanned.gns3') {
     try {
         const res = await fetch('/ai-api/topologies');
         const json = await res.json();
+        
+        // If scanned.gns3 doesn't exist yet, fallback to KOTHANT.gns3
+        if (selected === 'scanned.gns3' && !json.files.includes('scanned.gns3')) {
+            selected = 'KOTHANT.gns3';
+        }
+
         if (!json.ok) return;
         
         const sel = document.getElementById('topology-selector');
@@ -912,6 +950,33 @@ function setAiStep(stepNum, state, text) {
     lucide.createIcons({ nodes: [icon] });
 }
 
+// Helper to compress image before sending to make AI scan super fast
+async function resizeImage(file, maxWidth = 1200) {
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                if (img.width <= maxWidth && img.height <= maxWidth) return resolve(file);
+                
+                const ratio = Math.min(maxWidth / img.width, maxWidth / img.height);
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width * ratio;
+                canvas.height = img.height * ratio;
+                
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                
+                canvas.toBlob((blob) => {
+                    resolve(new File([blob], file.name, { type: file.type || 'image/jpeg' }));
+                }, file.type || 'image/jpeg', 0.85);
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
 async function scanImage(file) {
     if (file.size > 10 * 1024 * 1024) {
         showToast('fail', 'File too large', 'Max image size is 10MB.');
@@ -921,12 +986,15 @@ async function scanImage(file) {
     // Open Modal
     const modal = document.getElementById('ai-modal');
     modal.style.display = 'flex';
-    setAiStep(1, 'active', 'Step 1: Scanning Image with Gemini AI...');
+    setAiStep(1, 'active', 'Step 1: Compressing & Scanning Image...');
     setAiStep(2, '', 'Step 2: Generating & Loading .gns3');
     setAiStep(3, '', 'Step 3: Setup Success');
     
+    // Resize before uploading to make Gemini API extremely fast
+    const optimizedFile = await resizeImage(file);
+    
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('file', optimizedFile);
     
     try {
         const res = await fetch('/ai-api/scan-image', {
@@ -1414,8 +1482,11 @@ async function handleChatImageUpload(file) {
         appendChatMessage('user', 'image', { src: ev.target.result, name: file.name });
         showChatThinking();
 
+        // Compress image to speed up API heavily
+        const optimizedFile = await resizeImage(file);
+        
         const formData = new FormData();
-        formData.append('file', file);
+        formData.append('file', optimizedFile);
 
         try {
             const res  = await fetch('/ai-api/scan-image', { method: 'POST', body: formData });
@@ -1430,6 +1501,10 @@ async function handleChatImageUpload(file) {
 
                 currentGns3 = gns3Data;
                 appendChatMessage('bot', 'code', gns3Data, gns3Data);
+                
+                // Allow auto-apply for this new scan
+                window._autoApplied = false;
+                
                 await populateTopologies('scanned.gns3');
             } else {
                 appendChatMessage('bot', 'error', `Scan failed: ${json.error}`);
@@ -1650,68 +1725,83 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 async function processTerminalCommand(cmd) {
     const parts = cmd.split(' ').filter(Boolean);
-    if (!parts.length) return;
     const baseCmd = parts[0].toLowerCase();
     
-    if (baseCmd === 'clear' || baseCmd === 'cls') {
-        const out = document.getElementById('terminal-output');
-        if (out) out.innerHTML = '';
-        return;
-    } 
-    
-    if (baseCmd === 'ssh' || baseCmd === 'connect' || baseCmd === 'switch') {
-        let target = parts[1];
-        if (baseCmd === 'switch' && target && target.toLowerCase() === 'to') {
-            target = parts.slice(2).join(' ') || parts[2];
-        } else if (baseCmd === 'switch' || baseCmd === 'connect' || baseCmd === 'ssh') {
-            target = parts.slice(1).join(' ') || parts[1];
-        }
+    if (baseCmd === 'ping') {
+        const target = parts[1];
         if (!target) {
-            appendTermLine(`Usage: <span class="term-highlight">switch to &lt;device/hostname&gt;</span> (e.g. switch to DMZ-switch, switch to Server1, switch to Cloud)`);
+            appendTermLine('Usage: ping &lt;ip-address or hostname&gt;');
             return;
         }
-        currentTerminalHost = target;
+        
+        // Find if target matches any node or generated IP
+        const nodes = Object.values(nodeRegistry || {});
+        let foundNode = nodes.find(n => n.name.toLowerCase() === target.toLowerCase());
+        
+        // Check if user typed an IP from the getIP helper
+        if (!foundNode && typeof getIP === 'function') {
+            foundNode = nodes.find(n => getIP(n.name) === target);
+        }
+        
+        if (!foundNode) {
+            appendTermLine(`Pinging ${target} with 32 bytes of data:`);
+            await sleep(500);
+            appendTermLine(`<span class="term-error">Request timed out.</span>`);
+            await sleep(500);
+            appendTermLine(`<span class="term-error">Request timed out.</span>`);
+            await sleep(500);
+            appendTermLine(`<span class="term-error">Request timed out.</span>`);
+            await sleep(500);
+            appendTermLine(`<span class="term-error">Request timed out.</span>`);
+            appendTermLine('<br>Ping statistics for ' + target + ':');
+            appendTermLine('    Packets: Sent = 4, Received = 0, Lost = 4 (100% loss)');
+            return;
+        }
+
+        const ip = typeof getIP === 'function' ? getIP(foundNode.name) : target;
+        const name = foundNode.name;
+        
+        appendTermLine(`Pinging ${name} [${ip}] with 32 bytes of data:`);
+        
+        let sent = 4, rec = 4;
+        let totalTime = 0, minTime = 999, maxTime = 0;
+        
+        for(let i=0; i<4; i++) {
+            await sleep(600);
+            const time = 2 + Math.floor(Math.random() * 20);
+            totalTime += time;
+            if(time < minTime) minTime = time;
+            if(time > maxTime) maxTime = time;
+            appendTermLine(`Reply from ${ip}: bytes=32 time=${time}ms TTL=64`);
+        }
+        
+        await sleep(400);
+        appendTermLine(`<br>Ping statistics for ${ip}:`);
+        appendTermLine(`    Packets: Sent = ${sent}, Received = ${rec}, Lost = 0 (0% loss),`);
+        appendTermLine(`Approximate round trip times in milli-seconds:`);
+        appendTermLine(`    Minimum = ${minTime}ms, Maximum = ${maxTime}ms, Average = ${Math.round(totalTime/4)}ms`);
+        
+    } else if (baseCmd === 'clear' || baseCmd === 'cls') {
+        const out = document.getElementById('terminal-output');
+        if (out) out.innerHTML = '';
+    } else if (baseCmd === 'ssh' || baseCmd === 'connect') {
+        const target = parts[1];
+        if (!target) {
+            appendTermLine(`Usage: ${baseCmd} &lt;hostname&gt;`);
+            return;
+        }
+        currentTerminalHost = target.toUpperCase();
         const promptEl = document.getElementById('term-prompt-active');
         if (promptEl) promptEl.textContent = `${currentTerminalHost}>`;
-        appendTermLine(`Switched terminal session to <span class="term-highlight" style="color:var(--accent-cyan);font-weight:bold">${currentTerminalHost}</span>. Active CLI console ready.`);
-        return;
-    } 
-    
-    if (baseCmd === 'help') {
+        appendTermLine(`Connected to ${currentTerminalHost}. Console is now active.`);
+    } else if (baseCmd === 'help') {
         appendTermLine('Available commands:');
-        appendTermLine('  <span class="term-highlight">switch to &lt;device&gt;</span> - Switch active terminal session (e.g. switch to DMZ-switch, switch to Server1, switch to Cloud)');
         appendTermLine('  <span class="term-highlight">ping &lt;target&gt;</span> - Send ICMP ECHO_REQUEST to network hosts');
-        appendTermLine('  <span class="term-highlight">show ip interface brief</span> - Display interface status and IP assignments');
-        appendTermLine('  <span class="term-highlight">show ip route</span> - Display routing table');
-        appendTermLine('  <span class="term-highlight">show vlan</span> / <span class="term-highlight">show mac address-table</span> - Display switch VLANs & MAC tables');
-        appendTermLine('  <span class="term-highlight">show running-config</span> - Display running configuration');
-        appendTermLine('  <span class="term-highlight">ifconfig</span> / <span class="term-highlight">ip a</span> / <span class="term-highlight">netstat -r</span> - Display server/host network configuration');
-        appendTermLine('  <span class="term-highlight">show version</span> - Display system hardware and software status');
-        appendTermLine('  <span class="term-highlight">show interfaces</span> - Display interface statistics');
+        appendTermLine('  <span class="term-highlight">connect &lt;hostname&gt;</span> - Change active terminal session');
         appendTermLine('  <span class="term-highlight">clear</span> - Clear the terminal screen');
         appendTermLine('  <span class="term-highlight">help</span> - Show this message');
-        return;
-    }
-
-    appendTermLine(`<span class="term-prompt" style="color:var(--text-muted)">Executing on ${currentTerminalHost}...</span>`);
-    
-    try {
-        const res = await fetch('/ai-api/run-cli', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ router_name: currentTerminalHost, command: cmd })
-        });
-        const json = await res.json();
-        
-        if (json.ok) {
-            let outHTML = json.output.replace(/</g, '&lt;').replace(/>/g, '&gt;');
-            outHTML = outHTML.replace(/\n/g, '<br>').replace(/ /g, '&nbsp;');
-            appendTermLine(`<div style="white-space: pre-wrap; font-family: monospace;">${outHTML}</div>`);
-        } else {
-            appendTermLine(`<span class="term-error">Error: ${json.error}</span>`);
-        }
-    } catch (err) {
-        appendTermLine(`<span class="term-error">Connection failed: ${err.message}</span>`);
+    } else {
+        appendTermLine(`<span class="term-error">% Unknown command: ${baseCmd}</span>`);
     }
 }
 
@@ -1719,3 +1809,565 @@ async function processTerminalCommand(cmd) {
 document.addEventListener('DOMContentLoaded', initTerminal, { once: false });
 
 
+// ══════════════════════════════════════════════════════════════════════════════
+// GNS3 CONTROL PANEL
+// ══════════════════════════════════════════════════════════════════════════════
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let gns3Connected   = false;
+let gns3Projects    = [];
+let gns3Nodes       = [];     // nodes in selected project
+let gns3DeviceMap   = [];     // [{ai_name, gns3_id, gns3_name, confidence}, ...]
+let gns3AiDevices   = [];     // from current scanned/modified topology _ai_topology
+let gns3ProjectId   = '';
+let gns3Busy        = false;
+let gns3StatusTimer = null;
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+    gns3CheckStatus();
+    // Auto-refresh GNS3 status every 30 s
+    gns3StatusTimer = setInterval(gns3CheckStatus, 30000);
+}, { once: true });
+
+// ── Log helpers ───────────────────────────────────────────────────────────────
+function gns3Log(level, message) {
+    const logEl = document.getElementById('gns3-log');
+    if (!logEl) return;
+    const row = document.createElement('div');
+    const ts  = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+    const cls = {OK:'gns3-log-ok', INFO:'gns3-log-info', ERROR:'gns3-log-error', WARN:'gns3-log-warn'}[level] || 'gns3-log-info';
+    row.className = `gns3-log-line ${cls}`;
+    row.innerHTML = `<span class="gns3-log-ts">${ts}</span><span class="gns3-log-level">[${level}]</span> ${escHtml(message)}`;
+    logEl.appendChild(row);
+    logEl.scrollTop = logEl.scrollHeight;
+}
+
+function gns3ClearLog() {
+    const logEl = document.getElementById('gns3-log');
+    if (logEl) logEl.innerHTML = '';
+}
+
+function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Pull server logs into the UI log panel ────────────────────────────────────
+async function gns3SyncServerLogs() {
+    try {
+        const r = await fetch('/gns3-api/logs');
+        const j = await r.json();
+        if (j.ok && j.logs && j.logs.length > 0) {
+            j.logs.forEach(e => gns3Log(e.level, e.message));
+        }
+    } catch (_) {}
+}
+
+// ── Status check ──────────────────────────────────────────────────────────────
+async function gns3CheckStatus() {
+    const dot  = document.getElementById('gns3-status-dot');
+    const txt  = document.getElementById('gns3-status-text');
+    const url  = document.getElementById('gns3-status-url');
+    const card = document.getElementById('gns3-status-card');
+
+    if (dot) dot.className = 'gns3-dot gns3-dot-checking';
+    if (txt) txt.textContent = 'Checking…';
+
+    try {
+        const r = await fetch('/gns3-api/status');
+        const j = await r.json();
+
+        if (j.ok) {
+            gns3Connected = true;
+            if (dot)  dot.className  = 'gns3-dot gns3-dot-connected';
+            if (txt)  txt.textContent = `Connected  v${j.version || '?'}`;
+            if (url)  url.textContent = j.url || '';
+            if (card) card.classList.add('connected');
+            gns3Log('OK', `GNS3 server connected — ${j.url} (v${j.version || '?'})`);
+            await gns3LoadProjects();
+        } else {
+            gns3Connected = false;
+            if (dot)  dot.className  = 'gns3-dot gns3-dot-disconnected';
+            if (txt)  txt.textContent = 'Disconnected';
+            if (url)  url.textContent = j.url || '';
+            if (card) card.classList.remove('connected');
+            gns3Log('ERROR', j.error || 'GNS3 server not reachable');
+        }
+    } catch (e) {
+        gns3Connected = false;
+        if (dot)  dot.className  = 'gns3-dot gns3-dot-disconnected';
+        if (txt)  txt.textContent = 'Error';
+        if (card) card.classList.remove('connected');
+        gns3Log('ERROR', `Status check failed: ${e.message}`);
+    }
+}
+
+// ── Load projects ─────────────────────────────────────────────────────────────
+async function gns3LoadProjects() {
+    try {
+        const r = await fetch('/gns3-api/projects');
+        const j = await r.json();
+        if (!j.ok) { gns3Log('ERROR', j.error); return; }
+
+        gns3Projects = j.projects || [];
+        const sel = document.getElementById('gns3-project-select');
+        if (!sel) return;
+        sel.innerHTML = '<option value="">— Select a project —</option>';
+        gns3Projects.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p.id; opt.textContent = `${p.name}  (${p.status})`;
+            sel.appendChild(opt);
+        });
+        gns3Log('INFO', `Loaded ${gns3Projects.length} project(s)`);
+    } catch (e) {
+        gns3Log('ERROR', `Failed to load projects: ${e.message}`);
+    }
+}
+
+// ── Project selected ──────────────────────────────────────────────────────────
+async function gns3OnProjectChange(projectId) {
+    if (!projectId) return;
+    gns3ProjectId = projectId;
+    gns3Log('INFO', `Loading nodes for project ${projectId}.`);
+    
+    // Fetch actual live IPs from GNS3 on project load
+    setTimeout(fetchLiveIPs, 500);
+
+
+    const nodesCard = document.getElementById('gns3-nodes-card');
+    const nodesEl   = document.getElementById('gns3-nodes-list');
+
+    try {
+        const r = await fetch(`/gns3-api/projects/${projectId}/nodes`);
+        const j = await r.json();
+        if (!j.ok) { gns3Log('ERROR', j.error); return; }
+
+        gns3Nodes = j.nodes || [];
+        gns3Log('OK', `Loaded ${gns3Nodes.length} node(s)`);
+
+        // Render node badges
+        if (nodesEl) {
+            nodesEl.innerHTML = gns3Nodes.map(n => {
+                const cls = n.status === 'started' ? 'gns3-node-running' : 'gns3-node-stopped';
+                const icon = n.status === 'started' ? '●' : '○';
+                return `<div class="gns3-node-badge ${cls}">
+                    <span class="gns3-node-indicator">${icon}</span>
+                    <span class="gns3-node-name">${escHtml(n.name)}</span>
+                    <span class="gns3-node-type">${escHtml(n.node_type)}</span>
+                </div>`;
+            }).join('');
+        }
+        if (nodesCard) nodesCard.style.display = '';
+
+        // Try to build device mapping if we have AI devices
+        gns3TryBuildMapping();
+    } catch (e) {
+        gns3Log('ERROR', `Failed to load nodes: ${e.message}`);
+    }
+}
+
+// ── Extract AI devices from current loaded topology ───────────────────────────
+function gns3ExtractAiDevices() {
+    // First try: currentGns3._ai_topology (set by scan-image endpoint)
+    if (currentGns3 && currentGns3._ai_topology && currentGns3._ai_topology.devices) {
+        return currentGns3._ai_topology.devices;
+    }
+
+    // Fallback: reconstruct minimal device list from GNS3 nodes in topology
+    if (currentGns3 && currentGns3.topology && currentGns3.topology.nodes) {
+        return currentGns3.topology.nodes.map(n => ({
+            id:         n.name,
+            label:      n.name,
+            type:       n.node_type === 'dynamips' ? 'router' :
+                        n.node_type === 'ethernet_switch' ? 'switch' : 'pc',
+            interfaces: []
+        }));
+    }
+
+    // Last resort: use nodeRegistry from topology viewer
+    return Object.values(nodeRegistry || {}).map(n => ({
+        id:    n.name,
+        label: n.name,
+        type:  n.type === 'Router' ? 'router' : n.type === 'PC' ? 'pc' : 'switch',
+        interfaces: []
+    }));
+}
+
+// ── Auto-build device mapping ─────────────────────────────────────────────────
+function gns3TryBuildMapping() {
+    gns3AiDevices = gns3ExtractAiDevices();
+    if (!gns3AiDevices.length || !gns3Nodes.length) return;
+
+    // Simple auto-map by normalized name
+    function normName(s) {
+        return String(s).toLowerCase().replace(/[^a-z0-9]/g, '');
+    }
+
+    const gns3ByNorm = {};
+    gns3Nodes.forEach(n => { gns3ByNorm[normName(n.name)] = n; });
+
+    gns3DeviceMap = gns3AiDevices.map(dev => {
+        const aiName   = dev.label || dev.id || '';
+        const normAI   = normName(aiName);
+
+        // Exact match
+        if (gns3ByNorm[normAI]) {
+            const gn = gns3ByNorm[normAI];
+            return { ai_name: aiName, gns3_id: gn.id, gns3_name: gn.name, confidence: 'exact' };
+        }
+
+        // Substring match
+        let found = null;
+        for (const [norm, gn] of Object.entries(gns3ByNorm)) {
+            if (normAI.includes(norm) || norm.includes(normAI)) { found = gn; break; }
+        }
+        if (found) {
+            return { ai_name: aiName, gns3_id: found.id, gns3_name: found.name, confidence: 'fuzzy' };
+        }
+
+        return { ai_name: aiName, gns3_id: null, gns3_name: null, confidence: 'none' };
+    });
+
+    gns3RenderMapping();
+    const actionsEl = document.getElementById('gns3-actions');
+    if (actionsEl) actionsEl.style.display = '';
+}
+
+// ── Render mapping table ──────────────────────────────────────────────────────
+function gns3RenderMapping() {
+    const tbody   = document.getElementById('gns3-mapping-tbody');
+    const mapCard = document.getElementById('gns3-mapping-card');
+    const infoEl  = document.getElementById('gns3-mapping-info');
+    if (!tbody) return;
+
+    const unmapped = gns3DeviceMap.filter(m => !m.gns3_id).length;
+    if (infoEl) {
+        infoEl.innerHTML = unmapped > 0
+            ? `<span class="gns3-map-warn">⚠ ${unmapped} device(s) could not be auto-mapped. Please select manually.</span>`
+            : `<span class="gns3-map-ok">✓ All devices mapped automatically</span>`;
+    }
+
+    // AUTOMATION: If all devices mapped automatically and we have a project, auto-apply!
+    if (unmapped === 0 && gns3ProjectId && !window._autoApplied) {
+        window._autoApplied = true;
+        gns3Log('INFO', 'Full auto-mapping achieved. Automatically applying configuration to GNS3 in 2 seconds...');
+        setTimeout(() => gns3ApplyConfig(), 2000);
+    }
+
+    tbody.innerHTML = gns3DeviceMap.map((m, idx) => {
+        const confidenceCls = {exact:'conf-exact', fuzzy:'conf-fuzzy', none:'conf-none'}[m.confidence] || '';
+        const confidenceTxt = {exact:'Exact', fuzzy:'Fuzzy', none:'⚠ None'}[m.confidence] || '';
+        const deviceType    = gns3AiDevices[idx]?.type || '?';
+
+        const selectHtml = `<select class="gns3-map-select" data-ai-idx="${idx}" onchange="gns3OnMappingChange(${idx}, this.value)">
+            <option value="">— None —</option>
+            ${gns3Nodes.map(n =>
+                `<option value="${n.id}" ${n.id === m.gns3_id ? 'selected' : ''}>${escHtml(n.name)} (${n.node_type})</option>`
+            ).join('')}
+        </select>`;
+
+        return `<tr>
+            <td class="gns3-map-ai"><strong>${escHtml(m.ai_name)}</strong></td>
+            <td><span class="gns3-type-badge">${escHtml(deviceType)}</span></td>
+            <td class="gns3-map-arrow">→</td>
+            <td>${selectHtml}</td>
+            <td><span class="gns3-confidence ${confidenceCls}">${confidenceTxt}</span></td>
+        </tr>`;
+    }).join('');
+
+    if (mapCard) mapCard.style.display = '';
+    lucide.createIcons({ nodes: [tbody] });
+}
+
+function gns3OnMappingChange(idx, gns3NodeId) {
+    if (!gns3DeviceMap[idx]) return;
+    const node = gns3Nodes.find(n => n.id === gns3NodeId);
+    gns3DeviceMap[idx].gns3_id   = gns3NodeId || null;
+    gns3DeviceMap[idx].gns3_name = node ? node.name : null;
+    gns3DeviceMap[idx].confidence = gns3NodeId ? 'manual' : 'none';
+
+    // Update confidence badge
+    const rows = document.querySelectorAll('#gns3-mapping-tbody tr');
+    if (rows[idx]) {
+        const badge = rows[idx].querySelector('.gns3-confidence');
+        if (badge) {
+            badge.className = 'gns3-confidence conf-' + (gns3NodeId ? 'exact' : 'none');
+            badge.textContent = gns3NodeId ? 'Manual' : '⚠ None';
+        }
+    }
+}
+
+// ── Config preview ────────────────────────────────────────────────────────────
+async function gns3ShowPreview() {
+    if (!gns3AiDevices.length) {
+        showToast('fail', 'No AI Topology', 'Please upload a topology image first.');
+        return;
+    }
+
+    const previewCard = document.getElementById('gns3-preview-card');
+    const previewBody = document.getElementById('gns3-preview-body');
+    const warnEl      = document.getElementById('gns3-preview-warnings');
+
+    if (previewCard) previewCard.style.display = '';
+    if (previewBody) previewBody.innerHTML = '<div class="gns3-loading">Generating preview…</div>';
+
+    try {
+        const r = await fetch('/gns3-api/config-preview', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ ai_devices: gns3AiDevices })
+        });
+        const j = await r.json();
+
+        if (!j.ok) { gns3Log('ERROR', j.error); return; }
+
+        // Render warnings
+        if (warnEl) {
+            warnEl.innerHTML = (j.warnings || []).length > 0
+                ? `<div class="gns3-warn-list">${j.warnings.map(w =>
+                    `<div class="gns3-warn-item">⚠ ${escHtml(w)}</div>`).join('')}</div>`
+                : '';
+        }
+
+        // Render per-device config
+        if (previewBody) {
+            previewBody.innerHTML = Object.entries(j.preview || {}).map(([name, cmds]) => `
+                <div class="gns3-preview-device">
+                    <div class="gns3-preview-device-name">${escHtml(name)}</div>
+                    <pre class="gns3-preview-code">${escHtml(cmds.join('\n'))}</pre>
+                </div>`).join('');
+        }
+    } catch (e) {
+        if (previewBody) previewBody.innerHTML = `<div class="gns3-error">${escHtml(e.message)}</div>`;
+    }
+}
+
+function gns3TogglePreview() {
+    const body = document.getElementById('gns3-preview-body');
+    if (body) body.style.display = body.style.display === 'none' ? '' : 'none';
+}
+
+// ── Apply configuration ───────────────────────────────────────────────────────
+async function gns3ApplyConfig() {
+    if (gns3Busy) return;
+    if (!gns3Connected) {
+        showToast('fail', 'GNS3 Not Connected', 'Cannot apply config — GNS3 server is not connected.');
+        return;
+    }
+    if (!gns3ProjectId) {
+        showToast('fail', 'No Project Selected', 'Please select a GNS3 project first.');
+        return;
+    }
+    if (!gns3AiDevices.length) {
+        showToast('fail', 'No AI Topology', 'Please upload a topology image first.');
+        return;
+    }
+    if (!gns3DeviceMap.length) {
+        showToast('fail', 'No Device Mapping', 'Please select a project to build the device mapping.');
+        return;
+    }
+
+    const unmapped = gns3DeviceMap.filter(m => !m.gns3_id);
+    if (unmapped.length > 0) {
+        const names = unmapped.map(m => m.ai_name).join(', ');
+        showToast('fail', 'Unmapped Devices', `These devices have no GNS3 target: ${names}. Please map them manually.`);
+        return;
+    }
+
+    gns3Busy = true;
+    gns3ClearLog();
+    gns3Log('INFO', 'Starting configuration apply workflow…');
+
+    // Show progress UI
+    const progressCard = document.getElementById('gns3-progress-card');
+    const progressList = document.getElementById('gns3-progress-list');
+    const applyBtn     = document.getElementById('btn-gns3-apply');
+    const verifyBtn    = document.getElementById('btn-gns3-verify');
+
+    if (progressCard) progressCard.style.display = '';
+    if (applyBtn) { applyBtn.disabled = true; applyBtn.innerHTML = '<i data-lucide="loader"></i> Applying…'; lucide.createIcons({nodes:[applyBtn]}); }
+
+    // Build initial progress rows
+    const progItems = {};
+    if (progressList) {
+        progressList.innerHTML = gns3DeviceMap.map(m => {
+            const id = `gns3-prog-${m.ai_name.replace(/\s/g,'_')}`;
+            progItems[m.ai_name] = id;
+            return `<div class="gns3-prog-row" id="${id}">
+                <span class="gns3-prog-icon gns3-prog-waiting">○</span>
+                <span class="gns3-prog-name">${escHtml(m.ai_name)} → ${escHtml(m.gns3_name || '?')}</span>
+                <span class="gns3-prog-status">Waiting…</span>
+            </div>`;
+        }).join('');
+    }
+
+    // Set first device as "Configuring"
+    function setProgress(aiName, icon, statusText, cssClass) {
+        const rowEl = document.getElementById(progItems[aiName]);
+        if (!rowEl) return;
+        const iconEl   = rowEl.querySelector('.gns3-prog-icon');
+        const statusEl = rowEl.querySelector('.gns3-prog-status');
+        if (iconEl)   { iconEl.className = `gns3-prog-icon ${cssClass}`; iconEl.textContent = icon; }
+        if (statusEl) statusEl.textContent = statusText;
+    }
+
+    // Mark all as "pending"
+    gns3DeviceMap.forEach(m => setProgress(m.ai_name, '⟳', 'Queued…', 'gns3-prog-waiting'));
+
+    try {
+        const r = await fetch('/gns3-api/apply-config', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({
+                project_id:     gns3ProjectId,
+                device_mapping: gns3DeviceMap,
+                ai_devices:     gns3AiDevices,
+                gns3_nodes:     gns3Nodes,
+            })
+        });
+        const j = await r.json();
+        await gns3SyncServerLogs();
+
+        if (j.results) {
+            j.results.forEach(result => {
+                const { device, status } = result;
+                if (status === 'success') {
+                    setProgress(device, '✓', 'Complete', 'gns3-prog-success');
+                    gns3Log('OK', `${device}: Configuration applied successfully`);
+                } else if (status === 'skipped') {
+                    setProgress(device, '—', 'Skipped', 'gns3-prog-skipped');
+                    gns3Log('WARN', `${device}: ${result.output || 'Skipped'}`);
+                } else {
+                    setProgress(device, '✗', 'Error', 'gns3-prog-error');
+                    gns3Log('ERROR', `${device}: ${result.error}`);
+                }
+            });
+        }
+
+        if (j.ok) {
+            showToast('success', 'Configuration Applied!', 'All devices configured successfully.');
+            gns3Log('OK', 'Configuration apply workflow complete ✓');
+            if (verifyBtn) verifyBtn.style.display = '';
+        } else {
+            showToast('fail', 'Apply Partially Failed', 'Some devices had errors. Check the log.');
+            gns3Log('WARN', 'Apply finished with errors — check log for details');
+            if (verifyBtn) verifyBtn.style.display = '';
+        }
+    } catch (e) {
+        showToast('fail', 'Apply Failed', e.message);
+        gns3Log('ERROR', `Apply request failed: ${e.message}`);
+    } finally {
+        gns3Busy = false;
+        if (applyBtn) {
+            applyBtn.disabled = false;
+            applyBtn.innerHTML = '<i data-lucide="zap"></i> Apply Configuration to GNS3';
+            lucide.createIcons({ nodes: [applyBtn] });
+        }
+    }
+}
+
+// ── Verify configuration ──────────────────────────────────────────────────────
+async function gns3VerifyConfig() {
+    if (gns3Busy) return;
+    if (!gns3ProjectId) { showToast('fail', 'No Project', 'Select a GNS3 project first.'); return; }
+
+    gns3Busy = true;
+    gns3Log('INFO', 'Starting configuration verification…');
+    const verifyCard = document.getElementById('gns3-verify-card');
+    const verifyList = document.getElementById('gns3-verify-list');
+    const verifyBtn  = document.getElementById('btn-gns3-verify');
+
+    if (verifyCard) verifyCard.style.display = '';
+    if (verifyList) verifyList.innerHTML = '<div class="gns3-loading">Verifying…</div>';
+    if (verifyBtn)  { verifyBtn.disabled = true; verifyBtn.innerHTML = '<i data-lucide="loader"></i> Verifying…'; lucide.createIcons({nodes:[verifyBtn]}); }
+
+    try {
+        const r = await fetch('/gns3-api/verify', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({
+                project_id:     gns3ProjectId,
+                device_mapping: gns3DeviceMap,
+                ai_devices:     gns3AiDevices,
+                gns3_nodes:     gns3Nodes,
+            })
+        });
+        const j = await r.json();
+        await gns3SyncServerLogs();
+
+        if (verifyList && j.results) {
+            let overallSuccess = j.results.every(r => r.status === 'success' || r.status === 'skipped');
+            let summaryHTML = `<div style="margin-bottom:12px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:8px;">
+                <h4 style="margin:0 0 4px 0; font-size:14px; font-weight:600;">AI Network Configuration</h4>
+                <div style="font-size:12px; color:#a0aec0;">Configuration Status: <strong style="color:${overallSuccess ? '#68d391' : '#fc8181'}">${overallSuccess ? 'SUCCESS' : 'FAILED'}</strong></div>
+                <div style="font-size:12px; color:#a0aec0;">GNS3 Verification: <strong style="color:${overallSuccess ? '#68d391' : '#fc8181'}">${overallSuccess ? 'PASSED' : 'FAILED'}</strong></div>
+            </div>`;
+
+            const resultsHTML = j.results.map(result => {
+                const { device, status, output, error, parsed_summary } = result;
+                const icon = status === 'success' ? '✓' : status === 'skipped' ? '—' : '✗';
+                const cls  = status === 'success' ? 'gns3-verify-ok' : status === 'skipped' ? 'gns3-verify-skip' : 'gns3-verify-fail';
+                const detail = output || '';
+                const errDetail = error || '';
+                
+                let parsedHTML = '';
+                if (parsed_summary && Array.isArray(parsed_summary) && parsed_summary.length > 0) {
+                    parsedHTML = `<div style="font-family: monospace; font-size: 12px; margin-top: 6px; padding: 6px; background: rgba(0,0,0,0.2); border-radius: 4px;">
+                        ${parsed_summary.map(s => escHtml(s)).join('<br>')}
+                    </div>`;
+                }
+
+                return `<div class="gns3-verify-row ${cls}">
+                    <div class="gns3-verify-top">
+                        <span class="gns3-verify-icon">${icon}</span>
+                        <strong>${escHtml(device)}</strong>
+                        <span class="gns3-verify-tag">${status}</span>
+                    </div>
+                    ${errDetail ? `<div style="margin-top:8px; color: #fc8181; font-size: 12px; font-family: monospace; white-space: pre-wrap; padding: 6px; background: rgba(252, 129, 129, 0.1); border-radius: 4px;">${escHtml(errDetail)}</div>` : ''}
+                    ${parsedHTML}
+                    ${detail ? `<details class="gns3-verify-detail" style="margin-top: 8px;">
+                        <summary>Raw output</summary>
+                        <pre class="gns3-verify-output">${escHtml(detail)}</pre>
+                    </details>` : ''}
+                </div>`;
+            }).join('');
+            
+            verifyList.innerHTML = summaryHTML + resultsHTML;
+        }
+
+        gns3Log('OK', 'Verification complete');
+        showToast('success', 'Verification Done', 'Configuration verification finished.');
+    } catch (e) {
+        gns3Log('ERROR', `Verification failed: ${e.message}`);
+        showToast('fail', 'Verify Failed', e.message);
+    } finally {
+        gns3Busy = false;
+        if (verifyBtn) {
+            verifyBtn.disabled = false;
+            verifyBtn.innerHTML = '<i data-lucide="shield-check"></i> Verify Configuration';
+            lucide.createIcons({ nodes: [verifyBtn] });
+        }
+    }
+}
+
+// ── Watch for new AI topology scans (hook into existing scanImage flow) ────────
+// After a successful scan-image, re-extract AI devices and rebuild mapping
+const _origHandleChatImageUpload = handleChatImageUpload;
+handleChatImageUpload = async function(file) {
+    await _origHandleChatImageUpload(file);
+    // Give a brief moment for currentGns3 to be set
+    setTimeout(gns3TryBuildMapping, 500);
+};
+
+// Also hook into the main "AI Scan Image" button (btn-upload path)
+const _origScanImage = scanImage;
+scanImage = async function(file) {
+    await _origScanImage(file);
+    setTimeout(() => {
+        // Re-fetch scanned.gns3 to get _ai_topology
+        fetch('topology/scanned.gns3?t=' + Date.now()).then(r => r.json()).then(data => {
+            currentGns3 = data;
+            gns3TryBuildMapping();
+        }).catch(() => {});
+    }, 1000);
+};
