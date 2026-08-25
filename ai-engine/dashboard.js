@@ -83,7 +83,10 @@ function getIP(name) {
         return ip.split('/')[0];
     }
     
-    // If not fetched yet
+    const ln = name.toLowerCase();
+    if (ln.includes("switch") || ln.includes("cloud")) {
+        return "N/A (L2)";
+    }
     return "Pending...";
 }
 
