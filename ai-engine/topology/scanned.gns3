@@ -1,7 +1,7 @@
 {
   "auto_close": true,
   "name": "Scanned_Topology",
-  "project_id": "3d035283-7e3b-4dbd-90f5-ff66e270fb6f",
+  "project_id": "7535922c-e1a0-4d7e-88e1-f790cd330eb2",
   "revision": 9,
   "topology": {
     "computes": [],
@@ -9,11 +9,11 @@
     "links": [
       {
         "filters": {},
-        "link_id": "af932c00-3335-46b1-bf59-9289504a464c",
+        "link_id": "a6bca7df-264b-4e93-98c7-bef5451bf65c",
         "nodes": [
           {
             "adapter_number": 0,
-            "node_id": "886fd9b9-56b3-4e22-bdbf-66deadf6ba02",
+            "node_id": "527fd656-8052-47c0-b155-ffdb4aaec6aa",
             "port_number": 0,
             "label": {
               "text": "eth0"
@@ -21,10 +21,33 @@
           },
           {
             "adapter_number": 0,
-            "node_id": "f2a6d36b-2b5d-4c15-a6ea-362e20ec4010",
+            "node_id": "785bfe37-c96f-4b0f-bd09-80ddf666181d",
+            "port_number": 0,
+            "label": {
+              "text": "eth0"
+            }
+          }
+        ],
+        "suspend": false
+      },
+      {
+        "filters": {},
+        "link_id": "7751b848-b8a3-496e-865b-cbbcef4dc1bf",
+        "nodes": [
+          {
+            "adapter_number": 0,
+            "node_id": "9473afcf-4d7f-49af-8989-ba5926b88d29",
+            "port_number": 0,
+            "label": {
+              "text": "eth0"
+            }
+          },
+          {
+            "adapter_number": 0,
+            "node_id": "785bfe37-c96f-4b0f-bd09-80ddf666181d",
             "port_number": 1,
             "label": {
-              "text": "f0/1"
+              "text": "eth1"
             }
           }
         ],
@@ -32,11 +55,11 @@
       },
       {
         "filters": {},
-        "link_id": "8a55d648-ad57-448c-8563-7e25f755f14e",
+        "link_id": "842b740b-5bc1-4233-a79a-5e1f124690a5",
         "nodes": [
           {
             "adapter_number": 0,
-            "node_id": "dacc5c9c-c68c-430d-9c48-90cabfd73682",
+            "node_id": "a134fcdf-3283-4a42-b292-ced87508e197",
             "port_number": 0,
             "label": {
               "text": "eth0"
@@ -44,10 +67,10 @@
           },
           {
             "adapter_number": 0,
-            "node_id": "f2a6d36b-2b5d-4c15-a6ea-362e20ec4010",
+            "node_id": "785bfe37-c96f-4b0f-bd09-80ddf666181d",
             "port_number": 2,
             "label": {
-              "text": "f0/2"
+              "text": "eth2"
             }
           }
         ],
@@ -55,42 +78,19 @@
       },
       {
         "filters": {},
-        "link_id": "473492e2-787d-43b1-aece-a626335f7047",
+        "link_id": "b9431323-1784-412e-b313-7c7a8900c587",
         "nodes": [
           {
             "adapter_number": 0,
-            "node_id": "0e4a729d-9b4a-46f5-adb4-0784b149d2ea",
-            "port_number": 0,
-            "label": {
-              "text": "eth0"
-            }
-          },
-          {
-            "adapter_number": 0,
-            "node_id": "f2a6d36b-2b5d-4c15-a6ea-362e20ec4010",
+            "node_id": "785bfe37-c96f-4b0f-bd09-80ddf666181d",
             "port_number": 3,
             "label": {
-              "text": "f0/3"
-            }
-          }
-        ],
-        "suspend": false
-      },
-      {
-        "filters": {},
-        "link_id": "cf0efdd5-5e4a-440e-b52d-9824c8147f1e",
-        "nodes": [
-          {
-            "adapter_number": 0,
-            "node_id": "f2a6d36b-2b5d-4c15-a6ea-362e20ec4010",
-            "port_number": 0,
-            "label": {
-              "text": "f0/0"
+              "text": "eth3"
             }
           },
           {
             "adapter_number": 0,
-            "node_id": "98f9dcf1-3590-49c4-8d6d-dba873adc255",
+            "node_id": "4fa35116-d806-424b-9ca5-2de56f0b4e0e",
             "port_number": 0,
             "label": {
               "text": "g0/0"
@@ -101,11 +101,11 @@
       },
       {
         "filters": {},
-        "link_id": "7250af73-3d45-4342-a97a-30589a5bcc45",
+        "link_id": "1ee6ae7c-4630-49ca-8e92-d66bd04aee23",
         "nodes": [
           {
             "adapter_number": 0,
-            "node_id": "98f9dcf1-3590-49c4-8d6d-dba873adc255",
+            "node_id": "4fa35116-d806-424b-9ca5-2de56f0b4e0e",
             "port_number": 1,
             "label": {
               "text": "g0/1"
@@ -113,7 +113,7 @@
           },
           {
             "adapter_number": 0,
-            "node_id": "18d48b6b-5378-4b46-bf50-d5f6125ba09b",
+            "node_id": "45089aac-ce83-45a0-8dba-3c31ca9a69c5",
             "port_number": 0,
             "label": {
               "text": "g0/0"
@@ -124,11 +124,34 @@
       },
       {
         "filters": {},
-        "link_id": "a9ea6969-bb09-4517-b8f3-242e36afbb8b",
+        "link_id": "1034e6c9-85a5-466a-a80d-b6d6d78353ff",
         "nodes": [
           {
             "adapter_number": 0,
-            "node_id": "18d48b6b-5378-4b46-bf50-d5f6125ba09b",
+            "node_id": "45089aac-ce83-45a0-8dba-3c31ca9a69c5",
+            "port_number": 1,
+            "label": {
+              "text": "g0/1"
+            }
+          },
+          {
+            "adapter_number": 0,
+            "node_id": "ddc0228e-44d3-4337-8a9b-6e1611cc1229",
+            "port_number": 0,
+            "label": {
+              "text": "eth0"
+            }
+          }
+        ],
+        "suspend": false
+      },
+      {
+        "filters": {},
+        "link_id": "7364b331-b9df-4fa4-a0e2-4fe62255b9f4",
+        "nodes": [
+          {
+            "adapter_number": 0,
+            "node_id": "45089aac-ce83-45a0-8dba-3c31ca9a69c5",
             "port_number": 2,
             "label": {
               "text": "g0/2"
@@ -136,7 +159,7 @@
           },
           {
             "adapter_number": 0,
-            "node_id": "d995eab1-2c76-4736-a225-c99ed2407a41",
+            "node_id": "da398016-5496-4c45-849c-2bf4fe27091a",
             "port_number": 0,
             "label": {
               "text": "eth0"
@@ -147,42 +170,19 @@
       },
       {
         "filters": {},
-        "link_id": "159c1764-668f-46c3-b15c-756159c7a534",
+        "link_id": "87148203-c777-4a56-a0a0-f18a9fb0f8bc",
         "nodes": [
           {
             "adapter_number": 0,
-            "node_id": "18d48b6b-5378-4b46-bf50-d5f6125ba09b",
+            "node_id": "da398016-5496-4c45-849c-2bf4fe27091a",
             "port_number": 1,
             "label": {
-              "text": "g0/1"
+              "text": "eth1"
             }
           },
           {
             "adapter_number": 0,
-            "node_id": "aa31e03a-a84c-47fd-84be-33eb2e2678eb",
-            "port_number": 0,
-            "label": {
-              "text": "f0/0"
-            }
-          }
-        ],
-        "suspend": false
-      },
-      {
-        "filters": {},
-        "link_id": "5e0c5efa-4bd1-4b27-bfe9-c2726cb6b05e",
-        "nodes": [
-          {
-            "adapter_number": 0,
-            "node_id": "aa31e03a-a84c-47fd-84be-33eb2e2678eb",
-            "port_number": 1,
-            "label": {
-              "text": "f0/1"
-            }
-          },
-          {
-            "adapter_number": 0,
-            "node_id": "7a56cc6b-945c-4a0a-baa0-125d6d62fa55",
+            "node_id": "f09b14f8-9495-4ca8-ac22-37ba016f8ade",
             "port_number": 0,
             "label": {
               "text": "eth0"
@@ -193,19 +193,19 @@
       },
       {
         "filters": {},
-        "link_id": "82cebda1-b2f3-40fb-a320-e6bf4fb140cc",
+        "link_id": "b2c9efce-19c8-4b9c-914d-d1590d6838fd",
         "nodes": [
           {
             "adapter_number": 0,
-            "node_id": "aa31e03a-a84c-47fd-84be-33eb2e2678eb",
+            "node_id": "da398016-5496-4c45-849c-2bf4fe27091a",
             "port_number": 2,
             "label": {
-              "text": "f0/2"
+              "text": "eth2"
             }
           },
           {
             "adapter_number": 0,
-            "node_id": "fe65b6ca-f061-466a-8b08-622b0eb15216",
+            "node_id": "9345abc0-a94f-4044-8fb8-81851f261b8e",
             "port_number": 0,
             "label": {
               "text": "eth0"
@@ -216,19 +216,19 @@
       },
       {
         "filters": {},
-        "link_id": "f7e87a69-20f4-4b57-a345-462156c6db01",
+        "link_id": "300db855-ad19-46fe-909a-463570bbb5d8",
         "nodes": [
           {
             "adapter_number": 0,
-            "node_id": "aa31e03a-a84c-47fd-84be-33eb2e2678eb",
+            "node_id": "da398016-5496-4c45-849c-2bf4fe27091a",
             "port_number": 3,
             "label": {
-              "text": "f0/3"
+              "text": "eth3"
             }
           },
           {
             "adapter_number": 0,
-            "node_id": "e0f29ba0-94ea-46a6-8254-10f0ebaa3459",
+            "node_id": "cec27779-47f1-4c85-85cc-cf08a0a873bf",
             "port_number": 0,
             "label": {
               "text": "eth0"
@@ -244,225 +244,14 @@
         "console": 5000,
         "console_auto_start": false,
         "console_type": "none",
-        "name": "PC1",
-        "node_id": "886fd9b9-56b3-4e22-bdbf-66deadf6ba02",
-        "node_type": "vpcs",
-        "properties": {},
-        "symbol": ":/symbols/vpcs_guest.svg",
-        "width": 65,
-        "height": 45,
-        "x": 265,
-        "y": 230,
-        "z": 1,
-        "label": {
-          "rotation": 0,
-          "style": "font-family: TypeWriter;font-size: 10.0;font-weight: bold;fill: #000000;fill-opacity: 1.0;",
-          "text": "PC1",
-          "x": 0,
-          "y": -25
-        }
-      },
-      {
-        "compute_id": "local",
-        "console": 5001,
-        "console_auto_start": false,
-        "console_type": "none",
-        "name": "PC2",
-        "node_id": "dacc5c9c-c68c-430d-9c48-90cabfd73682",
-        "node_type": "vpcs",
-        "properties": {},
-        "symbol": ":/symbols/vpcs_guest.svg",
-        "width": 65,
-        "height": 45,
-        "x": 260,
-        "y": 380,
-        "z": 1,
-        "label": {
-          "rotation": 0,
-          "style": "font-family: TypeWriter;font-size: 10.0;font-weight: bold;fill: #000000;fill-opacity: 1.0;",
-          "text": "PC2",
-          "x": 0,
-          "y": -25
-        }
-      },
-      {
-        "compute_id": "local",
-        "console": 5002,
-        "console_auto_start": false,
-        "console_type": "none",
-        "name": "PC3",
-        "node_id": "0e4a729d-9b4a-46f5-adb4-0784b149d2ea",
-        "node_type": "vpcs",
-        "properties": {},
-        "symbol": ":/symbols/vpcs_guest.svg",
-        "width": 65,
-        "height": 45,
-        "x": 265,
-        "y": 530,
-        "z": 1,
-        "label": {
-          "rotation": 0,
-          "style": "font-family: TypeWriter;font-size: 10.0;font-weight: bold;fill: #000000;fill-opacity: 1.0;",
-          "text": "PC3",
-          "x": 0,
-          "y": -25
-        }
-      },
-      {
-        "compute_id": "local",
-        "console": 5003,
-        "console_auto_start": false,
-        "console_type": "none",
-        "name": "Switch2",
-        "node_id": "f2a6d36b-2b5d-4c15-a6ea-362e20ec4010",
-        "node_type": "ethernet_switch",
-        "properties": {
-          "ports": [
-            {
-              "ethertype": "",
-              "name": "Ethernet0",
-              "port_number": 0,
-              "type": "access",
-              "vlan": 1
-            },
-            {
-              "ethertype": "",
-              "name": "Ethernet1",
-              "port_number": 1,
-              "type": "access",
-              "vlan": 1
-            },
-            {
-              "ethertype": "",
-              "name": "Ethernet2",
-              "port_number": 2,
-              "type": "access",
-              "vlan": 1
-            },
-            {
-              "ethertype": "",
-              "name": "Ethernet3",
-              "port_number": 3,
-              "type": "access",
-              "vlan": 1
-            },
-            {
-              "ethertype": "",
-              "name": "Ethernet4",
-              "port_number": 4,
-              "type": "access",
-              "vlan": 1
-            },
-            {
-              "ethertype": "",
-              "name": "Ethernet5",
-              "port_number": 5,
-              "type": "access",
-              "vlan": 1
-            },
-            {
-              "ethertype": "",
-              "name": "Ethernet6",
-              "port_number": 6,
-              "type": "access",
-              "vlan": 1
-            },
-            {
-              "ethertype": "",
-              "name": "Ethernet7",
-              "port_number": 7,
-              "type": "access",
-              "vlan": 1
-            }
-          ]
-        },
-        "symbol": ":/symbols/ethernet_switch.svg",
-        "width": 70,
-        "height": 50,
-        "x": 355,
-        "y": 380,
-        "z": 1,
-        "label": {
-          "rotation": 0,
-          "style": "font-family: TypeWriter;font-size: 10.0;font-weight: bold;fill: #000000;fill-opacity: 1.0;",
-          "text": "Switch2",
-          "x": 0,
-          "y": -25
-        }
-      },
-      {
-        "compute_id": "local",
-        "console": 5004,
-        "console_auto_start": false,
-        "console_type": "telnet",
-        "name": "R2",
-        "node_id": "98f9dcf1-3590-49c4-8d6d-dba873adc255",
-        "node_type": "dynamips",
-        "properties": {
-          "platform": "c7200",
-          "nvram": 512,
-          "ram": 512,
-          "slot0": "C7200-IO-FE",
-          "slot1": "PA-FE-TX",
-          "image": "c7200-adventerprisek9-mz.153-3.XB12.image"
-        },
-        "symbol": ":/symbols/router.svg",
-        "width": 66,
-        "height": 45,
-        "x": 450,
-        "y": 380,
-        "z": 1,
-        "label": {
-          "rotation": 0,
-          "style": "font-family: TypeWriter;font-size: 10.0;font-weight: bold;fill: #000000;fill-opacity: 1.0;",
-          "text": "R2",
-          "x": 0,
-          "y": -25
-        }
-      },
-      {
-        "compute_id": "local",
-        "console": 5005,
-        "console_auto_start": false,
-        "console_type": "telnet",
-        "name": "R1",
-        "node_id": "18d48b6b-5378-4b46-bf50-d5f6125ba09b",
-        "node_type": "dynamips",
-        "properties": {
-          "platform": "c7200",
-          "nvram": 512,
-          "ram": 512,
-          "slot0": "C7200-IO-FE",
-          "slot1": "PA-FE-TX",
-          "image": "c7200-adventerprisek9-mz.153-3.XB12.image"
-        },
-        "symbol": ":/symbols/router.svg",
-        "width": 66,
-        "height": 45,
-        "x": 550,
-        "y": 340,
-        "z": 1,
-        "label": {
-          "rotation": 0,
-          "style": "font-family: TypeWriter;font-size: 10.0;font-weight: bold;fill: #000000;fill-opacity: 1.0;",
-          "text": "R1",
-          "x": 0,
-          "y": -25
-        }
-      },
-      {
-        "compute_id": "local",
-        "console": 5006,
-        "console_auto_start": false,
-        "console_type": "none",
         "name": "Cloud1",
-        "node_id": "d995eab1-2c76-4736-a225-c99ed2407a41",
+        "node_id": "ddc0228e-44d3-4337-8a9b-6e1611cc1229",
         "node_type": "vpcs",
         "properties": {},
         "symbol": ":/symbols/vpcs_guest.svg",
         "width": 65,
         "height": 45,
-        "x": 570,
+        "x": 680,
         "y": 180,
         "z": 1,
         "label": {
@@ -475,11 +264,71 @@
       },
       {
         "compute_id": "local",
-        "console": 5007,
+        "console": 5001,
+        "console_auto_start": false,
+        "console_type": "telnet",
+        "name": "R1",
+        "node_id": "45089aac-ce83-45a0-8dba-3c31ca9a69c5",
+        "node_type": "dynamips",
+        "properties": {
+          "platform": "c7200",
+          "nvram": 512,
+          "ram": 512,
+          "slot0": "C7200-IO-FE",
+          "slot1": "PA-FE-TX",
+          "image": "c7200-adventerprisek9-mz.153-3.XB12.image"
+        },
+        "symbol": ":/symbols/router.svg",
+        "width": 66,
+        "height": 45,
+        "x": 660,
+        "y": 330,
+        "z": 1,
+        "label": {
+          "rotation": 0,
+          "style": "font-family: TypeWriter;font-size: 10.0;font-weight: bold;fill: #000000;fill-opacity: 1.0;",
+          "text": "R1",
+          "x": 0,
+          "y": -25
+        }
+      },
+      {
+        "compute_id": "local",
+        "console": 5002,
+        "console_auto_start": false,
+        "console_type": "telnet",
+        "name": "R2",
+        "node_id": "4fa35116-d806-424b-9ca5-2de56f0b4e0e",
+        "node_type": "dynamips",
+        "properties": {
+          "platform": "c7200",
+          "nvram": 512,
+          "ram": 512,
+          "slot0": "C7200-IO-FE",
+          "slot1": "PA-FE-TX",
+          "image": "c7200-adventerprisek9-mz.153-3.XB12.image"
+        },
+        "symbol": ":/symbols/router.svg",
+        "width": 66,
+        "height": 45,
+        "x": 540,
+        "y": 370,
+        "z": 1,
+        "label": {
+          "rotation": 0,
+          "style": "font-family: TypeWriter;font-size: 10.0;font-weight: bold;fill: #000000;fill-opacity: 1.0;",
+          "text": "R2",
+          "x": 0,
+          "y": -25
+        }
+      },
+      {
+        "compute_id": "local",
+        "console": 5003,
         "console_auto_start": false,
         "console_type": "none",
         "name": "Switch1",
-        "node_id": "aa31e03a-a84c-47fd-84be-33eb2e2678eb",
+        "node_id": "da398016-5496-4c45-849c-2bf4fe27091a",
         "node_type": "ethernet_switch",
         "properties": {
           "ports": [
@@ -544,8 +393,8 @@
         "symbol": ":/symbols/ethernet_switch.svg",
         "width": 70,
         "height": 50,
-        "x": 540,
-        "y": 530,
+        "x": 650,
+        "y": 520,
         "z": 1,
         "label": {
           "rotation": 0,
@@ -557,41 +406,169 @@
       },
       {
         "compute_id": "local",
-        "console": 5008,
+        "console": 5004,
         "console_auto_start": false,
         "console_type": "none",
-        "name": "PC6",
-        "node_id": "7a56cc6b-945c-4a0a-baa0-125d6d62fa55",
-        "node_type": "vpcs",
-        "properties": {},
-        "symbol": ":/symbols/vpcs_guest.svg",
-        "width": 65,
-        "height": 45,
-        "x": 460,
-        "y": 600,
+        "name": "Switch2",
+        "node_id": "785bfe37-c96f-4b0f-bd09-80ddf666181d",
+        "node_type": "ethernet_switch",
+        "properties": {
+          "ports": [
+            {
+              "ethertype": "",
+              "name": "Ethernet0",
+              "port_number": 0,
+              "type": "access",
+              "vlan": 1
+            },
+            {
+              "ethertype": "",
+              "name": "Ethernet1",
+              "port_number": 1,
+              "type": "access",
+              "vlan": 1
+            },
+            {
+              "ethertype": "",
+              "name": "Ethernet2",
+              "port_number": 2,
+              "type": "access",
+              "vlan": 1
+            },
+            {
+              "ethertype": "",
+              "name": "Ethernet3",
+              "port_number": 3,
+              "type": "access",
+              "vlan": 1
+            },
+            {
+              "ethertype": "",
+              "name": "Ethernet4",
+              "port_number": 4,
+              "type": "access",
+              "vlan": 1
+            },
+            {
+              "ethertype": "",
+              "name": "Ethernet5",
+              "port_number": 5,
+              "type": "access",
+              "vlan": 1
+            },
+            {
+              "ethertype": "",
+              "name": "Ethernet6",
+              "port_number": 6,
+              "type": "access",
+              "vlan": 1
+            },
+            {
+              "ethertype": "",
+              "name": "Ethernet7",
+              "port_number": 7,
+              "type": "access",
+              "vlan": 1
+            }
+          ]
+        },
+        "symbol": ":/symbols/ethernet_switch.svg",
+        "width": 70,
+        "height": 50,
+        "x": 430,
+        "y": 370,
         "z": 1,
         "label": {
           "rotation": 0,
           "style": "font-family: TypeWriter;font-size: 10.0;font-weight: bold;fill: #000000;fill-opacity: 1.0;",
-          "text": "PC6",
+          "text": "Switch2",
           "x": 0,
           "y": -25
         }
       },
       {
         "compute_id": "local",
-        "console": 5009,
+        "console": 5005,
         "console_auto_start": false,
         "console_type": "none",
-        "name": "PC4",
-        "node_id": "fe65b6ca-f061-466a-8b08-622b0eb15216",
+        "name": "PC1",
+        "node_id": "527fd656-8052-47c0-b155-ffdb4aaec6aa",
         "node_type": "vpcs",
         "properties": {},
         "symbol": ":/symbols/vpcs_guest.svg",
         "width": 65,
         "height": 45,
-        "x": 710,
-        "y": 440,
+        "x": 320,
+        "y": 220,
+        "z": 1,
+        "label": {
+          "rotation": 0,
+          "style": "font-family: TypeWriter;font-size: 10.0;font-weight: bold;fill: #000000;fill-opacity: 1.0;",
+          "text": "PC1",
+          "x": 0,
+          "y": -25
+        }
+      },
+      {
+        "compute_id": "local",
+        "console": 5006,
+        "console_auto_start": false,
+        "console_type": "none",
+        "name": "PC2",
+        "node_id": "9473afcf-4d7f-49af-8989-ba5926b88d29",
+        "node_type": "vpcs",
+        "properties": {},
+        "symbol": ":/symbols/vpcs_guest.svg",
+        "width": 65,
+        "height": 45,
+        "x": 310,
+        "y": 370,
+        "z": 1,
+        "label": {
+          "rotation": 0,
+          "style": "font-family: TypeWriter;font-size: 10.0;font-weight: bold;fill: #000000;fill-opacity: 1.0;",
+          "text": "PC2",
+          "x": 0,
+          "y": -25
+        }
+      },
+      {
+        "compute_id": "local",
+        "console": 5007,
+        "console_auto_start": false,
+        "console_type": "none",
+        "name": "PC3",
+        "node_id": "a134fcdf-3283-4a42-b292-ced87508e197",
+        "node_type": "vpcs",
+        "properties": {},
+        "symbol": ":/symbols/vpcs_guest.svg",
+        "width": 65,
+        "height": 45,
+        "x": 310,
+        "y": 520,
+        "z": 1,
+        "label": {
+          "rotation": 0,
+          "style": "font-family: TypeWriter;font-size: 10.0;font-weight: bold;fill: #000000;fill-opacity: 1.0;",
+          "text": "PC3",
+          "x": 0,
+          "y": -25
+        }
+      },
+      {
+        "compute_id": "local",
+        "console": 5008,
+        "console_auto_start": false,
+        "console_type": "none",
+        "name": "PC4",
+        "node_id": "9345abc0-a94f-4044-8fb8-81851f261b8e",
+        "node_type": "vpcs",
+        "properties": {},
+        "symbol": ":/symbols/vpcs_guest.svg",
+        "width": 65,
+        "height": 45,
+        "x": 850,
+        "y": 430,
         "z": 1,
         "label": {
           "rotation": 0,
@@ -603,23 +580,46 @@
       },
       {
         "compute_id": "local",
-        "console": 5010,
+        "console": 5009,
         "console_auto_start": false,
         "console_type": "none",
         "name": "PC5",
-        "node_id": "e0f29ba0-94ea-46a6-8254-10f0ebaa3459",
+        "node_id": "cec27779-47f1-4c85-85cc-cf08a0a873bf",
         "node_type": "vpcs",
         "properties": {},
         "symbol": ":/symbols/vpcs_guest.svg",
         "width": 65,
         "height": 45,
-        "x": 710,
+        "x": 850,
         "y": 650,
         "z": 1,
         "label": {
           "rotation": 0,
           "style": "font-family: TypeWriter;font-size: 10.0;font-weight: bold;fill: #000000;fill-opacity: 1.0;",
           "text": "PC5",
+          "x": 0,
+          "y": -25
+        }
+      },
+      {
+        "compute_id": "local",
+        "console": 5010,
+        "console_auto_start": false,
+        "console_type": "none",
+        "name": "PC6",
+        "node_id": "f09b14f8-9495-4ca8-ac22-37ba016f8ade",
+        "node_type": "vpcs",
+        "properties": {},
+        "symbol": ":/symbols/vpcs_guest.svg",
+        "width": 65,
+        "height": 45,
+        "x": 550,
+        "y": 600,
+        "z": 1,
+        "label": {
+          "rotation": 0,
+          "style": "font-family: TypeWriter;font-size: 10.0;font-weight: bold;fill: #000000;fill-opacity: 1.0;",
+          "text": "PC6",
           "x": 0,
           "y": -25
         }
@@ -631,11 +631,131 @@
   "_ai_topology": {
     "devices": [
       {
+        "id": "Cloud1",
+        "type": "cloud",
+        "vendor": "generic",
+        "x": 680,
+        "y": 180,
+        "label": "Cloud1",
+        "interfaces": [
+          {
+            "name": "eth0",
+            "ip": "172.16.1.254/24",
+            "gateway": "172.16.1.1"
+          }
+        ]
+      },
+      {
+        "id": "R1",
+        "type": "router",
+        "vendor": "cisco",
+        "x": 660,
+        "y": 330,
+        "label": "R1",
+        "interfaces": [
+          {
+            "name": "f0/0",
+            "ip": "10.0.12.1/30",
+            "gateway": null
+          },
+          {
+            "name": "f1/0",
+            "ip": "172.16.1.1/24",
+            "gateway": null
+          },
+          {
+            "name": "f1/1",
+            "ip": "192.168.2.1/24",
+            "gateway": null
+          }
+        ]
+      },
+      {
+        "id": "R2",
+        "type": "router",
+        "vendor": "cisco",
+        "x": 540,
+        "y": 370,
+        "label": "R2",
+        "interfaces": [
+          {
+            "name": "f0/0",
+            "ip": "192.168.1.1/24",
+            "gateway": null
+          },
+          {
+            "name": "f1/0",
+            "ip": "10.0.12.2/30",
+            "gateway": null
+          }
+        ]
+      },
+      {
+        "id": "Switch1",
+        "type": "switch",
+        "vendor": "generic",
+        "x": 650,
+        "y": 520,
+        "label": "Switch1",
+        "interfaces": [
+          {
+            "name": "eth0",
+            "ip": null,
+            "gateway": null
+          },
+          {
+            "name": "eth1",
+            "ip": null,
+            "gateway": null
+          },
+          {
+            "name": "eth2",
+            "ip": null,
+            "gateway": null
+          },
+          {
+            "name": "eth3",
+            "ip": null,
+            "gateway": null
+          }
+        ]
+      },
+      {
+        "id": "Switch2",
+        "type": "switch",
+        "vendor": "generic",
+        "x": 430,
+        "y": 370,
+        "label": "Switch2",
+        "interfaces": [
+          {
+            "name": "eth0",
+            "ip": null,
+            "gateway": null
+          },
+          {
+            "name": "eth1",
+            "ip": null,
+            "gateway": null
+          },
+          {
+            "name": "eth2",
+            "ip": null,
+            "gateway": null
+          },
+          {
+            "name": "eth3",
+            "ip": null,
+            "gateway": null
+          }
+        ]
+      },
+      {
         "id": "PC1",
         "type": "pc",
-        "vendor": "generic",
-        "x": 265,
-        "y": 230,
+        "vendor": "vpcs",
+        "x": 320,
+        "y": 220,
         "label": "PC1",
         "interfaces": [
           {
@@ -648,9 +768,9 @@
       {
         "id": "PC2",
         "type": "pc",
-        "vendor": "generic",
-        "x": 260,
-        "y": 380,
+        "vendor": "vpcs",
+        "x": 310,
+        "y": 370,
         "label": "PC2",
         "interfaces": [
           {
@@ -663,9 +783,9 @@
       {
         "id": "PC3",
         "type": "pc",
-        "vendor": "generic",
-        "x": 265,
-        "y": 530,
+        "vendor": "vpcs",
+        "x": 310,
+        "y": 520,
         "label": "PC3",
         "interfaces": [
           {
@@ -676,151 +796,16 @@
         ]
       },
       {
-        "id": "Switch2",
-        "type": "switch",
-        "vendor": "generic",
-        "x": 355,
-        "y": 380,
-        "label": "Switch2",
-        "interfaces": [
-          {
-            "name": "f0/1",
-            "ip": null,
-            "gateway": null
-          },
-          {
-            "name": "f0/2",
-            "ip": null,
-            "gateway": null
-          },
-          {
-            "name": "f0/3",
-            "ip": null,
-            "gateway": null
-          },
-          {
-            "name": "f0/0",
-            "ip": null,
-            "gateway": null
-          }
-        ]
-      },
-      {
-        "id": "R2",
-        "type": "router",
-        "vendor": "cisco",
-        "x": 450,
-        "y": 380,
-        "label": "R2",
-        "interfaces": [
-          {
-            "name": "g0/0",
-            "ip": "192.168.1.1/24",
-            "gateway": null
-          },
-          {
-            "name": "g0/1",
-            "ip": "10.0.0.2/30",
-            "gateway": "10.0.0.1"
-          }
-        ]
-      },
-      {
-        "id": "R1",
-        "type": "router",
-        "vendor": "cisco",
-        "x": 550,
-        "y": 340,
-        "label": "R1",
-        "interfaces": [
-          {
-            "name": "g0/0",
-            "ip": "10.0.0.1/30",
-            "gateway": null
-          },
-          {
-            "name": "g0/1",
-            "ip": "192.168.2.1/24",
-            "gateway": null
-          },
-          {
-            "name": "g0/2",
-            "ip": "172.16.1.1/24",
-            "gateway": null
-          }
-        ]
-      },
-      {
-        "id": "Cloud1",
-        "type": "cloud",
-        "vendor": "generic",
-        "x": 570,
-        "y": 180,
-        "label": "Cloud1",
-        "interfaces": [
-          {
-            "name": "eth0",
-            "ip": "172.16.1.254/24",
-            "gateway": null
-          }
-        ]
-      },
-      {
-        "id": "Switch1",
-        "type": "switch",
-        "vendor": "generic",
-        "x": 540,
-        "y": 530,
-        "label": "Switch1",
-        "interfaces": [
-          {
-            "name": "f0/0",
-            "ip": null,
-            "gateway": null
-          },
-          {
-            "name": "f0/1",
-            "ip": null,
-            "gateway": null
-          },
-          {
-            "name": "f0/2",
-            "ip": null,
-            "gateway": null
-          },
-          {
-            "name": "f0/3",
-            "ip": null,
-            "gateway": null
-          }
-        ]
-      },
-      {
-        "id": "PC6",
-        "type": "pc",
-        "vendor": "generic",
-        "x": 460,
-        "y": 600,
-        "label": "PC6",
-        "interfaces": [
-          {
-            "name": "eth0",
-            "ip": "192.168.2.12/24",
-            "gateway": "192.168.2.1"
-          }
-        ]
-      },
-      {
         "id": "PC4",
         "type": "pc",
-        "vendor": "generic",
-        "x": 710,
-        "y": 440,
+        "vendor": "vpcs",
+        "x": 850,
+        "y": 430,
         "label": "PC4",
         "interfaces": [
           {
             "name": "eth0",
-            "ip": "192.168.2.10/24",
+            "ip": "192.168.2.14/24",
             "gateway": "192.168.2.1"
           }
         ]
@@ -828,14 +813,29 @@
       {
         "id": "PC5",
         "type": "pc",
-        "vendor": "generic",
-        "x": 710,
+        "vendor": "vpcs",
+        "x": 850,
         "y": 650,
         "label": "PC5",
         "interfaces": [
           {
             "name": "eth0",
-            "ip": "192.168.2.11/24",
+            "ip": "192.168.2.15/24",
+            "gateway": "192.168.2.1"
+          }
+        ]
+      },
+      {
+        "id": "PC6",
+        "type": "pc",
+        "vendor": "vpcs",
+        "x": 550,
+        "y": 600,
+        "label": "PC6",
+        "interfaces": [
+          {
+            "name": "eth0",
+            "ip": "192.168.2.16/24",
             "gateway": "192.168.2.1"
           }
         ]
@@ -846,26 +846,26 @@
         "from_device": "PC1",
         "from_interface": "eth0",
         "to_device": "Switch2",
-        "to_interface": "f0/1",
+        "to_interface": "eth0",
         "link_type": "ethernet"
       },
       {
         "from_device": "PC2",
         "from_interface": "eth0",
         "to_device": "Switch2",
-        "to_interface": "f0/2",
+        "to_interface": "eth1",
         "link_type": "ethernet"
       },
       {
         "from_device": "PC3",
         "from_interface": "eth0",
         "to_device": "Switch2",
-        "to_interface": "f0/3",
+        "to_interface": "eth2",
         "link_type": "ethernet"
       },
       {
         "from_device": "Switch2",
-        "from_interface": "f0/0",
+        "from_interface": "eth3",
         "to_device": "R2",
         "to_interface": "g0/0",
         "link_type": "ethernet"
@@ -879,35 +879,35 @@
       },
       {
         "from_device": "R1",
-        "from_interface": "g0/2",
+        "from_interface": "g0/1",
         "to_device": "Cloud1",
         "to_interface": "eth0",
         "link_type": "ethernet"
       },
       {
         "from_device": "R1",
-        "from_interface": "g0/1",
+        "from_interface": "g0/2",
         "to_device": "Switch1",
-        "to_interface": "f0/0",
+        "to_interface": "eth0",
         "link_type": "ethernet"
       },
       {
         "from_device": "Switch1",
-        "from_interface": "f0/1",
+        "from_interface": "eth1",
         "to_device": "PC6",
         "to_interface": "eth0",
         "link_type": "ethernet"
       },
       {
         "from_device": "Switch1",
-        "from_interface": "f0/2",
+        "from_interface": "eth2",
         "to_device": "PC4",
         "to_interface": "eth0",
         "link_type": "ethernet"
       },
       {
         "from_device": "Switch1",
-        "from_interface": "f0/3",
+        "from_interface": "eth3",
         "to_device": "PC5",
         "to_interface": "eth0",
         "link_type": "ethernet"
@@ -916,19 +916,19 @@
     "subnets": [
       {
         "network": "192.168.1.0/24",
-        "label": "LAN 1"
+        "label": "Left LAN"
       },
       {
-        "network": "10.0.0.0/30",
-        "label": "WAN Link R1-R2"
-      },
-      {
-        "network": "192.168.2.0/24",
-        "label": "LAN 2"
+        "network": "10.0.12.0/30",
+        "label": "R2-R1 Transit"
       },
       {
         "network": "172.16.1.0/24",
         "label": "Cloud Link"
+      },
+      {
+        "network": "192.168.2.0/24",
+        "label": "Right LAN"
       }
     ]
   }
