@@ -31,7 +31,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Origin",  "*")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
-        self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+        self.send_header("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0")
         self.send_header("Pragma",  "no-cache")
         self.send_header("Expires", "0")
         super().end_headers()
@@ -39,10 +39,6 @@ class Handler(http.server.SimpleHTTPRequestHandler):
     def do_OPTIONS(self):
         self.send_response(200)
         self.end_headers()
-
-    def end_headers(self):
-        self.send_header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
-        super().end_headers()
 
     def do_GET(self):
         if self.path == '/ai-api/topologies':
@@ -289,6 +285,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             device_mapping = data.get('device_mapping', [])
             ai_devices     = data.get('ai_devices', [])
             gns3_nodes     = data.get('gns3_nodes', [])
+            topology_data  = data.get('topology_data', {})
 
             if not project_id:
                 self._json(400, {"ok": False, "error": "No GNS3 project_id provided"})
@@ -304,7 +301,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 return
 
             from gns3_service import apply_configuration
-            result = apply_configuration(project_id, device_mapping, ai_devices, gns3_nodes)
+            result = apply_configuration(project_id, device_mapping, ai_devices, gns3_nodes, topology_data)
             self._json(200, result)
         except Exception as e:
             import traceback

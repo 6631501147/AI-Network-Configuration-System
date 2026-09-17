@@ -44,10 +44,17 @@ except ImportError:
 # CONFIGURATION
 # ─────────────────────────────────────────────────────────────────────────────
 
+# Resolve .env relative to this file's own location (ai-engine/.env), not the
+# process working directory — critical when called from the HTTP server thread.
+_ENV_FILE = os.path.normpath(
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".env")
+)
+
 def _get_config():
     # Bypass any local proxy settings for localhost connection
     os.environ["NO_PROXY"] = "*"
-    load_dotenv(override=True)
+    # Use explicit path so the server thread always finds the right .env file.
+    load_dotenv(dotenv_path=_ENV_FILE, override=True)
     url  = os.environ.get("GNS3_SERVER_URL", "http://localhost:3080").rstrip("/")
     user = os.environ.get("GNS3_USERNAME", "").strip()
     pwd  = os.environ.get("GNS3_PASSWORD", "").strip()
@@ -121,7 +128,7 @@ def check_connection() -> dict:
     Verify the GNS3 server is reachable.
     Returns {"ok": True/False, "version": "...", "url": "...", "error": "..."}
     """
-    url, _ = _get_config()
+    url, auth = _get_config()
     try:
         data = _get("version")
         version = data.get("version", "unknown")
@@ -129,8 +136,12 @@ def check_connection() -> dict:
         return {"ok": True, "version": version, "url": url}
     except Exception as e:
         msg = str(e)
-        if "Connection refused" in msg or "Failed to establish" in msg:
-            msg = f"GNS3 server is not running at {url}. Please start GNS3 and try again."
+        if "401" in msg or "Unauthorized" in msg:
+            cred_hint = f"username='{auth[0]}'" if auth else "no credentials set"
+            msg = (f"GNS3 server at {url} rejected credentials ({cred_hint}). "
+                   "Check GNS3_USERNAME / GNS3_PASSWORD in .env.")
+        elif "Connection refused" in msg or "Failed to establish" in msg:
+            msg = f"GNS3 server is not running at {url}. Please start GNS3 and try again. EXACT_ERROR={repr(e)}"
         elif "timeout" in msg.lower():
             msg = f"Connection to GNS3 server timed out. Check that {url} is reachable."
         else:
@@ -181,6 +192,8 @@ def get_project_nodes(project_id: str) -> dict:
         for n in raw:
             nodes.append({
                 "id":           n["node_id"],
+                "node_id":      n["node_id"],
+                "project_id":   n["project_id"],
                 "name":         n.get("name", ""),
                 "status":       n.get("status", "stopped"),
                 "node_type":    n.get("node_type", ""),
@@ -455,69 +468,227 @@ def _normalize_iface_name(raw: str) -> str:
     return raw  # unknown — keep as-is
 
 
-def generate_device_commands(device: dict, gns3_node: dict = None) -> list[str]:
+def _map_ai_ifaces_to_hw(ai_interfaces: list, gns3_node: dict, ai_connections: list = None) -> list[dict]:
     """
-    Given a device entry from the AI-scanned topology JSON, generate the
-    ordered list of Cisco IOS configuration commands.
+    Map AI interface list to actual hardware port names from GNS3.
+    Uses an advanced graph-based mapping: cross-references the AI's intended logical
+    connections against the actual physical GNS3 wiring to correct "backwards" wiring.
+    Falls back to index-based mapping if graph mapping fails.
+    """
+    if not gns3_node:
+        return [{"hw_name": _normalize_iface_name(i.get("name", "")),
+                 "ip": i.get("ip", ""), "gateway": i.get("gateway", "")}
+                for i in ai_interfaces]
 
-    Device dict shape (from gemini_vision.py PROMPT):
-    {
-      "id": "R1", "type": "router", "label": "R1",
-      "interfaces": [{"name": "g0/0", "ip": "192.168.1.1/24"}, ...]
-    }
+    hw_ports_sorted = sorted(
+        gns3_node.get("ports", []),
+        key=lambda p: (p.get("adapter_number", 0), p.get("port_number", 0))
+    )
+
+    target_to_gns3_port = {}
+    ai_iface_to_target = {}
+
+    # Attempt advanced graph mapping if connections are provided
+    if ai_connections:
+        try:
+            pid = gns3_node.get("project_id")
+            my_gns3_id = gns3_node.get("node_id")
+            my_name = gns3_node.get("name")
+            
+            # 1. Build AI Logical Map (Iface -> Target Name)
+            for conn in ai_connections:
+                if conn.get('from_device') == my_name:
+                    ai_iface_to_target[conn.get('from_interface')] = conn.get('to_device')
+                elif conn.get('to_device') == my_name:
+                    ai_iface_to_target[conn.get('to_interface')] = conn.get('from_device')
+
+            # 2. Build GNS3 Physical Map (Port -> Target Name)
+            if pid and my_gns3_id:
+                gns3_links = _get(f"projects/{pid}/links")
+                gns3_nodes = _get(f"projects/{pid}/nodes")
+                gns3_nodes_by_id = {n["node_id"]: n for n in gns3_nodes}
+
+                for lk in gns3_links:
+                    n1, n2 = lk['nodes'][0], lk['nodes'][1]
+                    if n1['node_id'] == my_gns3_id:
+                        my_idx = (n1['adapter_number'], n1['port_number'])
+                        tgt_id = n2['node_id']
+                    elif n2['node_id'] == my_gns3_id:
+                        my_idx = (n2['adapter_number'], n2['port_number'])
+                        tgt_id = n1['node_id']
+                    else:
+                        continue
+
+                    my_port_name = None
+                    for p in gns3_node.get("ports", []):
+                        if (p['adapter_number'], p['port_number']) == my_idx:
+                            my_port_name = p['name']
+                            break
+
+                    tgt_name = gns3_nodes_by_id.get(tgt_id, {}).get("name")
+                    if my_port_name and tgt_name:
+                        target_to_gns3_port[tgt_name] = my_port_name
+
+        except Exception as e:
+            _log("WARN", f"Advanced graph mapping failed for {gns3_node.get('name')}: {e}")
+
+    result = []
+    for idx, ai_iface in enumerate(ai_interfaces):
+        hw_name = None
+        # Try advanced mapping first
+        ai_iname = ai_iface.get("name")
+        target = ai_iface_to_target.get(ai_iname)
+        if target and target in target_to_gns3_port:
+            hw_name = target_to_gns3_port[target]
+        else:
+            # Fallback to index-based mapping
+            if idx < len(hw_ports_sorted):
+                hw_name = hw_ports_sorted[idx].get("name", "")
+            else:
+                hw_name = _normalize_iface_name(ai_iname)
+
+        result.append({
+            "hw_name": hw_name,
+            "ip":      ai_iface.get("ip", ""),
+            "gateway": ai_iface.get("gateway", ""),
+        })
+    return result
+
+
+def _build_static_routes(device: dict, all_devices: list) -> list[str]:
+    """
+    Generate static route commands for a router.
+    Finds routers reachable via shared transit subnets and adds routes
+    to their non-transit subnets through the appropriate next-hop.
+    """
+    my_label = device.get("label") or device.get("id", "")
+    my_nets: list = []
+    my_ifc_objs: list = []
+    for iface in device.get("interfaces", []):
+        ip_str = iface.get("ip", "")
+        if not ip_str:
+            continue
+        try:
+            ifc = ipaddress.IPv4Interface(ip_str)
+            my_nets.append(ifc.network)
+            my_ifc_objs.append(ifc)
+        except ValueError:
+            pass
+
+    if not my_nets:
+        return []
+
+    route_cmds = []
+    seen: set = set()
+    for other in all_devices:
+        other_label = other.get("label") or other.get("id", "")
+        if other_label == my_label:
+            continue
+        if other.get("type", "").lower() not in ("router",):
+            continue
+        for other_iface in other.get("interfaces", []):
+            try:
+                other_ifc = ipaddress.IPv4Interface(other_iface.get("ip", "") or "")
+            except ValueError:
+                continue
+            # Detect transit: other router is on one of my directly-connected subnets
+            for my_ifc in my_ifc_objs:
+                if other_ifc.network != my_ifc.network:
+                    continue
+                next_hop = str(other_ifc.ip)
+                # Add routes to all other router's subnets not directly connected to me
+                for rem_iface in other.get("interfaces", []):
+                    try:
+                        rem_ifc = ipaddress.IPv4Interface(rem_iface.get("ip", "") or "")
+                    except ValueError:
+                        continue
+                    if rem_ifc.network in my_nets:
+                        continue
+                    key = f"{rem_ifc.network}/{next_hop}"
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                    net_addr = str(rem_ifc.network.network_address)
+                    net_mask = str(rem_ifc.network.netmask)
+                    route_cmds.append(f"ip route {net_addr} {net_mask} {next_hop}")
+    return route_cmds
+
+
+def generate_device_commands(device: dict, gns3_node: dict = None,
+                             all_devices: list = None,
+                             connections: list = None) -> list[str]:
+    """
+    Generate Cisco IOS configuration commands for a device.
+    - gns3_node: when supplied, interface names match real hardware ports.
+    - all_devices: when supplied, static routes are auto-generated for routers.
     """
     name = device.get("label") or device.get("id") or "Device"
     device_type = device.get("type", "router").lower()
     interfaces = device.get("interfaces", [])
 
-    # We rely on the AI's interface names (e.g. 'f0/0' or 'f1/0') and normalize them
-    # later. Do not blindly overwrite them based on GNS3 port index order, as that 
-    # swaps IPs if the ports are not listed in the exact same order by the AI.
+    # Detect GNS3 node type to handle special cases
+    gns3_node_type = (gns3_node or {}).get("node_type", "").lower() if gns3_node else ""
 
-    # VPCS / PC nodes — minimal config
-    if device_type in ("pc", "vpcs"):
+    # Cloud / NAT nodes — no IOS console, skip
+    if device_type in ("cloud", "nat") or gns3_node_type == "cloud":
+        return []
+
+    # VPCS / PC nodes — VPCS command syntax
+    if device_type in ("pc", "vpcs") or gns3_node_type == "vpcs":
         cmds = []
         if interfaces:
             iface = interfaces[0]
             ip_str = iface.get("ip", "")
             gw_str = iface.get("gateway", "")
-            if ip_str:
-                if gw_str:
+            if ip_str and ip_str not in ("0.0.0.0", "0.0.0.0/0", ""):
+                if gw_str and gw_str not in ("0.0.0.0", ""):
                     cmds.append(f"ip {ip_str} {gw_str}")
                 else:
                     cmds.append(f"ip {ip_str}")
                 cmds.append("save")
         return cmds
 
-    # Switch — basic VLAN mode
+    # GNS3 unmanaged ethernet_switch — no IOS CLI, skip switchport commands
+    if gns3_node_type == "ethernet_switch":
+        return []
+
+    # Managed switch with IOS
     if device_type == "switch":
+        mapped = _map_ai_ifaces_to_hw(interfaces, gns3_node, connections)
         cmds = ["end", "enable", "configure terminal", f"hostname {name}"]
-        for iface in interfaces:
-            iname = _normalize_iface_name(iface.get("name", ""))
-            if iname:
-                cmds += [
-                    f"interface {iname}",
-                    "switchport mode access",
-                    "no shutdown",
-                    "exit",
-                ]
+        for m in mapped:
+            hw = m["hw_name"]
+            if hw:
+                cmds += [f"interface {hw}", "no shutdown", "exit"]
         cmds += ["end", "write memory"]
         return cmds
 
-    # Router (default)
+    # Router (default) — map AI interface names to real hardware port names
+    mapped = _map_ai_ifaces_to_hw(interfaces, gns3_node, connections)
     cmds = ["end", "enable", "configure terminal", f"hostname {name}"]
-    for iface in interfaces:
-        ip_str = iface.get("ip", "")
-        iname  = _normalize_iface_name(iface.get("name", ""))
-        if not iname:
+    for m in mapped:
+        ip_str = m["ip"]
+        hw     = m["hw_name"]
+        if not hw:
             continue
-        cmds.append(f"interface {iname}")
+        # Skip invalid/placeholder IPs
+        if ip_str and ip_str.split("/")[0] in ("0.0.0.0", ""):
+            ip_str = ""
+        cmds.append(f"interface {hw}")
         if ip_str:
             ip, mask = _cidr_to_mask(ip_str)
-            cmds += [f"ip address {ip} {mask}", "no shutdown"]
+            # Clear stale IPs from previous (incorrect) apply runs
+            cmds += ["no ip address", f"ip address {ip} {mask}", "no shutdown"]
         else:
             cmds.append("no shutdown")
         cmds.append("exit")
+
+    # Auto-generate static routes when full device list is provided
+    if all_devices:
+        routes = _build_static_routes(device, all_devices)
+        if routes:
+            cmds += routes
+
     cmds += ["end", "write memory"]
     return cmds
 
@@ -620,7 +791,7 @@ def auto_map_devices(ai_devices: list[dict], gns3_nodes: list[dict]) -> list[dic
 # ─────────────────────────────────────────────────────────────────────────────
 
 def apply_configuration(project_id: str, device_mapping: list[dict],
-                        ai_devices: list[dict], gns3_nodes: list[dict]) -> dict:
+                        ai_devices: list[dict], gns3_nodes: list[dict], topology_data: dict = None) -> dict:
     """
     Full automated workflow:
       1. Validate all AI-generated configs
@@ -699,8 +870,25 @@ def apply_configuration(project_id: str, device_mapping: list[dict],
             all_ok = False
             continue
 
+        # 2a. Attempt to get connections from passed data, fallback to scanned.gns3
+        connections = (topology_data or {}).get("_ai_topology", {}).get("connections", [])
+        if not connections:
+            try:
+                import os, json
+                if os.path.exists('topology/scanned.gns3'):
+                    with open('topology/scanned.gns3', 'r') as f:
+                        scanned_top = json.load(f)
+                        connections = scanned_top.get("_ai_topology", {}).get("connections", [])
+            except Exception as e:
+                _log("WARN", f"Failed to load connections from scanned.gns3: {e}")
+
         # 2b. Build commands
-        commands = generate_device_commands(ai_dev, gns3_node=gns3_node)
+        commands = generate_device_commands(
+            ai_dev, 
+            gns3_node=gns3_node, 
+            all_devices=ai_devices, 
+            connections=connections
+        )
         if not commands:
             _log("WARN", f"{gns3_name}: No commands generated — skipping")
             results.append({
@@ -783,9 +971,10 @@ def _parse_pc_output(raw_output):
     ip_match = re.search(r'IP/MASK\s+:\s+(\S+)', raw_output)
     gw_match = re.search(r'GATEWAY\s+:\s+(\S+)', raw_output)
     if ip_match:
-        parsed["ip"] = ip_match.group(1)
+        # Strip CIDR prefix (e.g. "192.168.1.10/24" -> "192.168.1.10")
+        parsed["ip"] = ip_match.group(1).split("/")[0]
     if gw_match:
-        parsed["gateway"] = gw_match.group(1)
+        parsed["gateway"] = gw_match.group(1).split("/")[0]
     return parsed
 
 def verify_configuration(project_id: str, device_mapping: list[dict],

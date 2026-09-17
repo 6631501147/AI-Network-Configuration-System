@@ -925,7 +925,7 @@ async function populateTopologies(selected = 'scanned.gns3') {
             sel.appendChild(opt);
         });
         
-        if (autoSelect) sel.value = autoSelect;
+        if (selected) sel.value = selected;
     } catch(err) {
         console.error('Failed to load topologies list', err);
     }
@@ -2226,6 +2226,7 @@ async function gns3ApplyConfig() {
                 device_mapping: gns3DeviceMap,
                 ai_devices:     gns3AiDevices,
                 gns3_nodes:     gns3Nodes,
+                topology_data:  (typeof currentGns3 !== 'undefined' ? currentGns3 : {})
             })
         });
         const j = await r.json();

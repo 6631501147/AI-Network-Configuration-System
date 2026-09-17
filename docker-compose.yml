@@ -88,6 +88,7 @@ services:
     environment:
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       PYTHONUNBUFFERED: "1"
+      GNS3_SERVER_URL: http://host.docker.internal:3080
     volumes:
       - ./ai-engine:/app
     ports:

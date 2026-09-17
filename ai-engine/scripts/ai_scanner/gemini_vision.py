@@ -154,7 +154,7 @@ def modify_topology(instruction: str, current_gns3: dict) -> dict:
     genai.configure(api_key=api_key)
 
     model = genai.GenerativeModel(
-        model_name="gemini-2.5-flash",
+        model_name="gemini-3.6-flash",
         safety_settings=SAFETY_SETTINGS,
         generation_config=genai.GenerationConfig(
             temperature=0.2,
