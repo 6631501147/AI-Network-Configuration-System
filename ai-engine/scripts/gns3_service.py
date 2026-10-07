@@ -50,11 +50,25 @@ _ENV_FILE = os.path.normpath(
     os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".env")
 )
 
+# Explicit proxy bypass — works reliably on Windows inside HTTP server threads
+_NO_PROXY = {"http": None, "https": None}
+
 def _get_config():
-    # Bypass any local proxy settings for localhost connection
-    os.environ["NO_PROXY"] = "*"
-    # Use explicit path so the server thread always finds the right .env file.
-    load_dotenv(dotenv_path=_ENV_FILE, override=True)
+    # Bypass any local proxy settings for localhost connection (belt-and-suspenders)
+    os.environ["NO_PROXY"]  = "*"
+    os.environ["no_proxy"]  = "*"
+    os.environ["HTTP_PROXY"]  = ""
+    os.environ["HTTPS_PROXY"] = ""
+    os.environ["http_proxy"]  = ""
+    os.environ["https_proxy"] = ""
+
+    # Only load .env if the key env vars are NOT already set (e.g. by docker-compose).
+    # This ensures Docker environment variables always take priority over the .env file,
+    # which is critical because the .env file contains 127.0.0.1 (for local runs)
+    # while Docker injects host.docker.internal (for container runs).
+    if not os.environ.get("GNS3_SERVER_URL"):
+        load_dotenv(dotenv_path=_ENV_FILE, override=False)
+
     url  = os.environ.get("GNS3_SERVER_URL", "http://localhost:3080").rstrip("/")
     user = os.environ.get("GNS3_USERNAME", "").strip()
     pwd  = os.environ.get("GNS3_PASSWORD", "").strip()
@@ -97,7 +111,7 @@ def _get(path: str, timeout: int = 10) -> dict:
     if not REQUESTS_AVAILABLE:
         raise RuntimeError("'requests' library not installed. Run: pip install requests")
     url, auth = _get_config()
-    resp = requests.get(f"{url}/v2/{path.lstrip('/')}", auth=auth, timeout=timeout)
+    resp = requests.get(f"{url}/v2/{path.lstrip('/')}", auth=auth, timeout=timeout, proxies=_NO_PROXY)
     resp.raise_for_status()
     return resp.json()
 
@@ -111,6 +125,7 @@ def _post(path: str, payload: Optional[dict] = None, timeout: int = 10) -> dict:
         json=payload or {},
         auth=auth,
         timeout=timeout,
+        proxies=_NO_PROXY,
     )
     resp.raise_for_status()
     try:

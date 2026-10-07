@@ -25,6 +25,11 @@ PORT = 8001
 TOPOLOGY_DIR = 'topology'
 MANUAL_FILE  = os.path.join(TOPOLOGY_DIR, 'manual.gns3')
 
+# Path to the ai-engine/.env file (absolute, so it works from any CWD)
+_ENV_FILE = os.path.normpath(
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env')
+)
+
 class Handler(http.server.SimpleHTTPRequestHandler):
 
     def end_headers(self):
@@ -80,6 +85,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 self._handle_gns3_live_ips(project_id)
             else:
                 self._json(400, {"ok": False, "error": "Invalid path"})
+
+        # ── GNS3 API: Config (current URL/user) ────────────────────────────────
+        elif self.path == '/gns3-api/config':
+            self._handle_gns3_config()
 
         # ── GNS3 API: Execution logs ──────────────────────────────────────────
         elif self.path == '/gns3-api/logs':
@@ -213,6 +222,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         elif self.path == '/gns3-api/verify':
             self._handle_gns3_verify()
 
+        # ── GNS3 API: Set URL ─────────────────────────────────────────────────
+        elif self.path == '/gns3-api/set-url':
+            self._handle_gns3_set_url()
+
         else:
             self._json(404, {"ok": False, "error": "Not found"})
 
@@ -328,6 +341,62 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self._json(200, result)
         except Exception as e:
             self._json(500, {"ok": False, "error": str(e)})
+
+    def _handle_gns3_config(self):
+        """Return the current GNS3 server URL and username (no password)."""
+        # Read directly from environment — Docker vars take priority and must not be overwritten
+        url  = os.environ.get('GNS3_SERVER_URL', 'http://localhost:3080')
+        user = os.environ.get('GNS3_USERNAME', '')
+        self._json(200, {'ok': True, 'url': url, 'user': user})
+
+    def _handle_gns3_set_url(self):
+        """Rewrite the .env file with the new GNS3 URL / credentials."""
+        length = int(self.headers.get('Content-Length', 0))
+        body   = self.rfile.read(length)
+        try:
+            data     = json.loads(body)
+            new_url  = data.get('url',      '').strip()
+            new_user = data.get('username', '').strip()
+            new_pass = data.get('password', '').strip()
+
+            if not new_url:
+                self._json(400, {'ok': False, 'error': 'URL is required'})
+                return
+
+            # Read existing .env, replace or append the three keys
+            env_path = _ENV_FILE
+            try:
+                with open(env_path, 'r', encoding='utf-8') as f:
+                    lines = f.readlines()
+            except FileNotFoundError:
+                lines = []
+
+            def _set_key(lines, key, value):
+                key_eq = key + '='
+                for i, l in enumerate(lines):
+                    if l.startswith(key_eq):
+                        lines[i] = f'{key}={value}\n'
+                        return lines
+                lines.append(f'{key}={value}\n')
+                return lines
+
+            lines = _set_key(lines, 'GNS3_SERVER_URL', new_url)
+            lines = _set_key(lines, 'GNS3_USERNAME',   new_user)
+            if new_pass:  # only overwrite password if a new one was provided
+                lines = _set_key(lines, 'GNS3_PASSWORD', new_pass)
+
+            with open(env_path, 'w', encoding='utf-8') as f:
+                f.writelines(lines)
+
+            # NOTE: Do NOT call load_dotenv(override=True) here — that would overwrite
+            # Docker-injected GNS3_SERVER_URL (host.docker.internal) with the .env value.
+            # The .env file update persists for local (non-Docker) runs only.
+
+            print(f'[CONFIG] .env updated with new GNS3_SERVER_URL={new_url}')
+            self._json(200, {'ok': True, 'url': new_url})
+        except Exception as e:
+            self._json(500, {'ok': False, 'error': str(e)})
+            print(f'[ERROR] set-url: {e}')
 
     def _handle_gns3_logs(self):
         try:

@@ -8,6 +8,11 @@ import google.generativeai as genai
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
 from dotenv import load_dotenv
 
+# Resolve .env relative to the ai-engine root, not the process CWD
+_ENV_FILE = os.path.normpath(
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", ".env")
+)
+
 SAFETY_SETTINGS = {
     HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
     HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
@@ -87,8 +92,11 @@ def extract_json(text: str) -> dict:
     raise ValueError("Could not extract valid JSON from Gemini response.")
 
 def analyze_image(image_bytes: bytes, mime_type: str) -> dict:
-    # Reload .env dynamically so the user doesn't have to restart the server
-    load_dotenv(override=True)
+    # Only load .env if GEMINI_API_KEY is not already in the environment.
+    # Using override=True here would overwrite Docker-injected GNS3_SERVER_URL
+    # (host.docker.internal) with the .env value (127.0.0.1), breaking GNS3 after every scan.
+    if not os.environ.get("GEMINI_API_KEY"):
+        load_dotenv(dotenv_path=_ENV_FILE, override=False)
     api_key = os.environ.get("GEMINI_API_KEY", "")
     if not api_key or api_key == "your_gemini_api_key_here":
         raise ValueError("GEMINI_API_KEY is not configured in .env")
@@ -146,7 +154,8 @@ Rules:
 
 def modify_topology(instruction: str, current_gns3: dict) -> dict:
     """Modify an existing GNS3 topology JSON based on a text instruction."""
-    load_dotenv(override=True)
+    if not os.environ.get("GEMINI_API_KEY"):
+        load_dotenv(dotenv_path=_ENV_FILE, override=False)
     api_key = os.environ.get("GEMINI_API_KEY", "")
     if not api_key or api_key == "your_gemini_api_key_here":
         raise ValueError("GEMINI_API_KEY is not configured in .env")

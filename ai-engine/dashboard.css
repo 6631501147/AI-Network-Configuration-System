@@ -2267,3 +2267,49 @@ body { padding-top: 48px; }
 .link-line-core.custom-fail { stroke: rgba(239, 68, 68, 0.8); stroke-dasharray: 4; }
 
 
+/* ── GNS3 URL Config Row ──────────────────────────────────────────────────── */
+.gns3-url-config-row {
+    display: flex; flex-wrap: wrap; align-items: center; gap: .75rem;
+    padding: .75rem 1.25rem;
+    background: rgba(14,165,233,.04);
+    border-bottom: 1px solid rgba(14,165,233,.1);
+    border-top: 1px solid rgba(255,255,255,.04);
+}
+.gns3-url-config-label {
+    display: flex; align-items: center; gap: .4rem;
+    font-size: .75rem; font-weight: 700; color: var(--text-secondary);
+    text-transform: uppercase; letter-spacing: .06em;
+    white-space: nowrap; flex-shrink: 0;
+}
+.gns3-url-config-inputs {
+    display: flex; align-items: center; gap: .5rem;
+    flex: 1; flex-wrap: wrap;
+}
+.gns3-url-input {
+    background: rgba(8,12,24,.8);
+    border: 1px solid rgba(14,165,233,.2);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    font-size: .78rem;
+    padding: .38rem .7rem;
+    outline: none;
+    min-width: 0;
+    flex: 2;
+    transition: border-color .2s, box-shadow .2s;
+}
+.gns3-url-input.gns3-cred-input { flex: 1; min-width: 100px; }
+.gns3-url-input::placeholder { color: var(--text-muted); }
+.gns3-url-input:focus { border-color: rgba(14,165,233,.55); box-shadow: 0 0 0 3px rgba(14,165,233,.1); }
+.gns3-url-save-btn {
+    display: inline-flex; align-items: center; gap: .4rem;
+    padding: .4rem .95rem; border-radius: 8px;
+    background: rgba(14,165,233,.12); border: 1px solid rgba(14,165,233,.35);
+    color: var(--accent-blue); font-family: var(--font-main);
+    font-size: .8rem; font-weight: 700; cursor: pointer;
+    white-space: nowrap; flex-shrink: 0;
+    transition: all .2s;
+}
+.gns3-url-save-btn svg { width: 13px; height: 13px; }
+.gns3-url-save-btn:hover { background: rgba(14,165,233,.22); border-color: rgba(14,165,233,.55); box-shadow: 0 0 12px rgba(14,165,233,.2); }
+.gns3-url-save-btn:disabled { opacity: .5; cursor: not-allowed; }

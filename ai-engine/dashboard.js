@@ -2375,3 +2375,77 @@ scanImage = async function(file) {
         }).catch(() => {});
     }, 1000);
 };
+
+// ── GNS3 URL / Credential Configuration ──────────────────────────────────────
+
+/**
+ * Load the current GNS3 URL from the server and pre-fill the input fields.
+ */
+async function gns3LoadCurrentUrl() {
+    try {
+        const r = await fetch('/gns3-api/config');
+        if (!r.ok) return;
+        const j = await r.json();
+        if (j.ok) {
+            const urlInput  = document.getElementById('gns3-url-input');
+            const userInput = document.getElementById('gns3-user-input');
+            if (urlInput  && j.url)  urlInput.value  = j.url;
+            if (userInput && j.user) userInput.value = j.user;
+            // Never pre-fill password for security
+        }
+    } catch (_) {}
+}
+
+/**
+ * Save a new GNS3 URL + credentials to the .env file and immediately
+ * attempt to reconnect.
+ */
+async function gns3SaveUrl() {
+    const urlInput  = document.getElementById('gns3-url-input');
+    const userInput = document.getElementById('gns3-user-input');
+    const passInput = document.getElementById('gns3-pass-input');
+    const btn       = document.getElementById('btn-gns3-save-url');
+
+    const newUrl  = (urlInput?.value  || '').trim();
+    const newUser = (userInput?.value || '').trim();
+    const newPass = (passInput?.value || '').trim();
+
+    if (!newUrl) {
+        showToast('fail', 'URL Required', 'Please enter a GNS3 server URL (e.g. http://127.0.0.1:3080)');
+        urlInput?.focus();
+        return;
+    }
+
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i data-lucide="loader"></i> Saving…'; lucide.createIcons({nodes:[btn]}); }
+
+    try {
+        const r = await fetch('/gns3-api/set-url', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: newUrl, username: newUser, password: newPass })
+        });
+        const j = await r.json();
+
+        if (j.ok) {
+            showToast('success', 'Config Saved', `GNS3 URL updated to ${newUrl}. Reconnecting…`);
+            gns3Log('INFO', `GNS3 server URL changed to ${newUrl}`);
+            if (passInput) passInput.value = ''; // clear password after save
+            // Reconnect with new settings
+            setTimeout(gns3CheckStatus, 600);
+        } else {
+            showToast('fail', 'Save Failed', j.error || 'Could not update .env');
+        }
+    } catch (e) {
+        showToast('fail', 'Save Error', e.message);
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i data-lucide="save"></i> Save & Connect'; lucide.createIcons({nodes:[btn]}); }
+    }
+}
+
+// Pre-fill URL inputs on page load and add Enter-key shortcut
+document.addEventListener('DOMContentLoaded', () => {
+    gns3LoadCurrentUrl();
+    const urlInput = document.getElementById('gns3-url-input');
+    if (urlInput) urlInput.addEventListener('keydown', e => { if (e.key === 'Enter') gns3SaveUrl(); });
+}, { once: true });
+
